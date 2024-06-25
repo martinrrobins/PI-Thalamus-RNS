@@ -64,103 +64,107 @@ hparams = {
         "epochs"       : epochs
         }
 
-s=1
+def main():
 
-model = iESPnet(hparams['n_cnn_layers'],
-                hparams['n_rnn_layers'],
-                hparams['rnn_dim'],
-                hparams['n_class'],
-                hparams['out_ch'],
-                hparams['dropout'],
-                )
+    for s in range (len(patients)):
+        model = iESPnet(hparams['n_cnn_layers'],
+                        hparams['n_rnn_layers'],
+                        hparams['rnn_dim'],
+                        hparams['n_class'],
+                        hparams['out_ch'],
+                        hparams['dropout'],
+                        )
 
-save_runs        = save_path + patients[s] + '/runs/'
-save_models      = save_path + patients[s] + '/models/'
-save_predictions = save_path + patients[s] + '/results/'
-save_figs        = save_path + patients[s] + '/figs/'
+        save_runs        = save_path + patients[s] + '/runs/'
+        save_models      = save_path + patients[s] + '/models/'
+        save_predictions = save_path + patients[s] + '/results/'
+        save_figs        = save_path + patients[s] + '/figs/'
 
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
-    
-if not os.path.exists(save_runs):
-    os.makedirs(save_runs)
-    
-if not os.path.exists(save_models):
-    os.makedirs(save_models)
-    
-if not os.path.exists(save_predictions):
-    os.makedirs(save_predictions)
-    
-if not os.path.exists(save_figs):
-    os.makedirs(save_figs)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+            
+        if not os.path.exists(save_runs):
+            os.makedirs(save_runs)
+            
+        if not os.path.exists(save_models):
+            os.makedirs(save_models)
+            
+        if not os.path.exists(save_predictions):
+            os.makedirs(save_predictions)
+            
+        if not os.path.exists(save_figs):
+            os.makedirs(save_figs)
 
-print('Running training for subject ' + patients[s] + ' [s]: ' + str(s))
+        print('Running training for subject ' + patients[s] + ' [s]: ' + str(s))
 
-# define train y test de df_meta
-train_df = df_meta.copy()
-test_df  = df_meta[df_meta['rns_id'] == patients[s]]
-test_df.reset_index(drop=True, inplace=True)
-train_df.drop(train_df[train_df['rns_id'] == patients[s]].index, inplace = True)
+        # define train y test de df_meta
+        train_df = df_meta.copy()
+        test_df  = df_meta[df_meta['rns_id'] == patients[s]]
+        test_df.reset_index(drop=True, inplace=True)
+        train_df.drop(train_df[train_df['rns_id'] == patients[s]].index, inplace = True)
 
 
-# Dataloaders creados
-train_data_ori = SeizureDatasetLabelTime(file=train_df,
-                                         root_dir=SPE_DIR,
-                                         transform=None, 
-                                         target_transform=smoothing_label(),
-                                        )
-       
-    
-transform_train1 = transforms.Compose([T.FrequencyMasking(FREQ_MASK_PARAM),
-                                       T.TimeMasking(TIME_MASK_PARAN), 
-                                       permute_spec()                                                                     
-                                    ])
+        # Dataloaders creados
+        train_data_ori = SeizureDatasetLabelTime(file=train_df,
+                                                root_dir=SPE_DIR,
+                                                transform=None, 
+                                                target_transform=smoothing_label(),
+                                                )
+            
+            
+        transform_train1 = transforms.Compose([T.FrequencyMasking(FREQ_MASK_PARAM),
+                                            T.TimeMasking(TIME_MASK_PARAN), 
+                                            permute_spec()                                                                     
+                                            ])
 
-# data augmentation only in train data
-train_data_trf1 = SeizureDatasetLabelTime(file=train_df,
-                                          root_dir=SPE_DIR,
-                                          transform=transform_train1, 
-                                          target_transform=smoothing_label() 
-                                         )
+        # data augmentation only in train data
+        train_data_trf1 = SeizureDatasetLabelTime(file=train_df,
+                                                root_dir=SPE_DIR,
+                                                transform=transform_train1, 
+                                                target_transform=smoothing_label() 
+                                                )
 
-train_data = torch.utils.data.ConcatDataset([train_data_ori, train_data_trf1])
+        train_data = torch.utils.data.ConcatDataset([train_data_ori, train_data_trf1])
 
-# testing data should be balanced, just be "as it is"
-test_data = SeizureDatasetLabelTime(file=test_df,
-                                    root_dir=SPE_DIR,
-                                    transform=None,
-                                    target_transform=smoothing_label()  
-                                    )
+        # testing data should be balanced, just be "as it is"
+        test_data = SeizureDatasetLabelTime(file=test_df,
+                                            root_dir=SPE_DIR,
+                                            transform=None,
+                                            target_transform=smoothing_label()  
+                                            )
 
-# se debe balancear train_df
-weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=2)
-sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
+        # se debe balancear train_df
+        weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=2)
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
 
-outputfile = save_models + 'model'
-avg_train_losses, avg_train_f1= train_model_opt(model, hparams, epochs, train_data, sampler, outputfile)
-        
-best_thr = 0.2
-best_path = save_models + 'model_opt.pth'
-        
-# in testing
-outputs_test=test_model(model, hparams, best_path, test_data)
-prediction_te = get_performance_indices(outputs_test['y_true'], outputs_test['y_prob'], best_thr)
-        
-# in training
-outputs_train=test_model(model, hparams, best_path, train_data_ori)
-prediction_tr = get_performance_indices(outputs_train['y_true'], outputs_train['y_prob'], best_thr)
-        
-predict_ = { 
-            "train_losses" : avg_train_losses,
-            "train_acupr"  : avg_train_f1,
-            "prediction_te": prediction_te,
-            "prediction_tr": prediction_tr, 
-            "hparams"      : hparams, 
-            "threshold"    : 0.2, 
-            "train_size"   : len(train_data_ori)/len(df_meta)
+        outputfile = save_models + 'model'
+        avg_train_losses, avg_train_f1= train_model_opt(model, hparams, epochs, train_data, sampler, outputfile)
+                
+        best_thr = 0.2
+        best_path = save_models + 'model_opt.pth'
+                
+        # in testing
+        outputs_test=test_model(model, hparams, best_path, test_data)
+        prediction_te = get_performance_indices(outputs_test['y_true'], outputs_test['y_prob'], best_thr)
+                
+        # in training
+        outputs_train=test_model(model, hparams, best_path, train_data_ori)
+        prediction_tr = get_performance_indices(outputs_train['y_true'], outputs_train['y_prob'], best_thr)
+                
+        predict_ = { 
+                    "train_losses" : avg_train_losses,
+                    "train_acupr"  : avg_train_f1,
+                    "prediction_te": prediction_te,
+                    "prediction_tr": prediction_tr, 
+                    "hparams"      : hparams, 
+                    "threshold"    : 0.2, 
+                    "train_size"   : len(train_data_ori)/len(df_meta)
 
-            }
-np.save(save_predictions+ patients[s]+ 'results.npy', predict_)
-        
+                    }
+        np.save(save_predictions+ patients[s]+ 'results.npy', predict_)
+                
 
-del train_data, test_data
+        del train_data, test_data
+
+if __name__=='__main__':
+    main()
