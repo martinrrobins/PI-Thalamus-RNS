@@ -31,10 +31,13 @@ from utilit import make_weights_for_balanced_classes
 torch.manual_seed(0)
 
 # direccion donde se encuentran los espectrogramas (path: martin)
-SPE_DIR  = '/media/martin/Disco2/Rns_Data/PITT/'
+SPE_DIR  = '/home/mrobins/Rns_Data/PITT_PI_v1/'
+
 
 # get metadata file
-meta_data_file = '/media/martin/Disco2/Rns_Data/PITT/METADATA/allfiles_metadata.csv'
+meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_v1/METADATA_v1/allfiles_metadata.csv'
+
+
 df_meta = pd.read_csv(meta_data_file)
 
 # drop de label == 2
