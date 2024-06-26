@@ -7,9 +7,9 @@
 #SBATCH --partition=multi
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
-#SBATCH --gres=gpu:2
-#SBATCH --cpus-per-task=20       # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --time=1-15:00           # total run time limit (<days>-<hours>:<minutes>)
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=10       # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --time=1-12:00           # total run time limit (<days>-<hours>:<minutes>)
 
 . /etc/profile
 module purge
@@ -28,11 +28,6 @@ echo ""
 source ${HOME}/.bashrc
 micromamba activate env_thalamus
 
-export TRANSFORMERS_OFFLINE=1
-export NCCL_DEBUG=INFO
-export NCCL_IB_DISABLE=1
-export NCCL_SOCKET_IFNAME=lo
+cd ${HOME}/01\ PI-Thalamus/PI-Thalamus-RNS/Paper_iESPnet_pruebas//
 
-cd ${HOME}/rec/code/rec/
-
-srun yaer run -e exp_027
+srun python3 example_run_test.py
