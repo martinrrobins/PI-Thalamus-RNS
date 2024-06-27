@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=exp_02_v2 # short name for your job
+#SBATCH --job-name=exp_01_v2 # short name for your job
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=martin.robins@mi.unc.edu.ar
 #SBATCH --output=slurm-%x.%j.out # %j job id, ½x job name
@@ -32,4 +32,4 @@ micromamba activate env_thalamus
 
 cd ${HOME}/01\ PI-Thalamus/PI-Thalamus-RNS/Paper_iESPnet_pruebas/
 
-srun python3 example_run_test_v2.py
+srun python3 example_run_test_v1_faltantes.py
