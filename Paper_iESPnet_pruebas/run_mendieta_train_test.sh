@@ -9,17 +9,17 @@
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10       # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --time=0-20:00           # total run time limit (<days>-<hours>:<minutes>)
+#SBATCH --time=0-18:00           # total run time limit (<days>-<hours>:<minutes>)
 
 . /etc/profile
 module purge
 ulimit -c unlimited  # core dump
 ulimit -s unlimited  # stack
 
-echo "job \"${SLURM_JOB_NAME}\""
-echo "  id: ${SLURM_JOB_ID}"
-echo "  partition: ${SLURM_JOB_PARTITION}"
-echo "  node(s): ${SLURM_JOB_NODELIST}"
+echo " job \"${SLURM_JOB_NAME}\""
+echo " id: ${SLURM_JOB_ID}"
+echo " partition: ${SLURM_JOB_PARTITION}"
+echo " node(s): ${SLURM_JOB_NODELIST}"
 echo " gres: ${SBATCH_GRES}"
 echo " gpus: ${SBATCH_GPUS}"
 date +"start %F - %T"
