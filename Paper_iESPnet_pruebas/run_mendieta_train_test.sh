@@ -26,6 +26,8 @@ date +"start %F - %T"
 echo ""
 
 source ${HOME}/.bashrc
+
+cd ${HOME}/
 micromamba activate env_thalamus
 
 cd ${HOME}/01\ PI-Thalamus/PI-Thalamus-RNS/Paper_iESPnet_pruebas/
