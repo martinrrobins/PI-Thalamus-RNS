@@ -24,7 +24,7 @@ sys.path.append(os.path.abspath(os.path.join('..','..','iESPnet_SRC_main','utili
 from Generator import SeizureDatasetLabelTime, scale_spec, permute_spec, smoothing_label
 from Model import iESPnet
 from TrainEval import train_model_opt, test_model, train_model, get_thr_output, get_performance_indices
-from utilit import make_weights_for_balanced_classes
+from utilit_train_test import make_weights_for_balanced_classes
 
 
 # set the seed for reproducibility
