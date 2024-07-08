@@ -20,7 +20,7 @@ from torchvision import transforms
 
 
 
-sys.path.append(os.path.abspath(os.path.join('..','iESPnet_SRC_main','utilities')))
+sys.path.append(os.path.abspath(os.path.join('..','..','iESPnet_SRC_main','utilities')))
 from Generator import SeizureDatasetLabelTime, scale_spec, permute_spec, smoothing_label
 from Model import iESPnet
 from TrainEval import train_model_opt, test_model, train_model, get_thr_output, get_performance_indices
