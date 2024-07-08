@@ -30,6 +30,6 @@ source ${HOME}/.bashrc
 cd ${HOME}/
 micromamba activate env_thalamus
 
-cd ${HOME}/01\ PI-Thalamus/PI-Thalamus-RNS/Paper_iESPnet_pruebas/
+cd ${HOME}/01\ PI-Thalamus/PI-Thalamus-RNS/Paper_iESPnet_pruebas/05-Train-Test/
 
 srun python3 example_run_test_v1_p1.py
