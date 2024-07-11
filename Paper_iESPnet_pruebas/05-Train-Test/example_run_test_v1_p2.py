@@ -40,9 +40,7 @@ meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_v1/METADATA_v1/allfiles_metadat
 
 df_meta = pd.read_csv(meta_data_file)
 
-# drop de label == 2
-df_meta.drop(df_meta[df_meta['label'] == 2].index, inplace = True)
-df_meta.drop(df_meta[df_meta['rns_id']=='PIT-RNS9793'].index, inplace = True)
+# drop de pacientes con impante en el talamo 
 df_meta.drop(df_meta[df_meta['rns_id'].isin(['PIT-RNS0427', 'PIT-RNS1713', 'PIT-RNS3016','PIT-RNS7168','PIT-RNS8326', 'PIT-RNS6762'])].index, inplace = True)
 
 FREQ_MASK_PARAM = 10
