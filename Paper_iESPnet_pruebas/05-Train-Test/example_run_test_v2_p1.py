@@ -40,9 +40,6 @@ meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_v2/METADATA_v2/allfiles_metadat
 
 df_meta = pd.read_csv(meta_data_file)
 
-# drop de pacientes con impante en el talamo 
-df_meta.drop(df_meta[df_meta['rns_id'].isin(['PIT-RNS0427', 'PIT-RNS1713', 'PIT-RNS3016','PIT-RNS7168','PIT-RNS8326', 'PIT-RNS6762'])].index, inplace = True)
-
 
 FREQ_MASK_PARAM = 10
 TIME_MASK_PARAN = 20
@@ -70,7 +67,7 @@ hparams = {
 
 def main():
 
-    for s in range (0,12):
+    for s in range (0,15):
         model = iESPnet(hparams['n_cnn_layers'],
                         hparams['n_rnn_layers'],
                         hparams['rnn_dim'],
