@@ -6,6 +6,7 @@ import mne
 import wfdb
 import copy
 import sys
+import torch
 
 from mne.datasets.utils                     import _get_path
 from mne.datasets.sleep_physionet._utils    import _fetch_one
@@ -395,3 +396,8 @@ def split_dataset(base_concat_ds, valid_size, test_size,
 
     return split_ds['0'], split_ds['1'], split_ds['2']
 
+def seed_np_rng(worker_id):
+    """Seed numpy random number generator for DataLoader with num_workers > 1.
+    """
+    worker_seed = torch.initial_seed() % 2 ** 32
+    np.random.seed(worker_seed)
