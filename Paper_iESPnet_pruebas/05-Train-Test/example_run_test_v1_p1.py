@@ -108,23 +108,23 @@ def main():
 
         # Dataloaders creados
         train_data_ori = SeizureDatasetLabelTime(file=train_df,
-                                                root_dir=SPE_DIR,
-                                                transform=None, 
-                                                target_transform=smoothing_label(),
-                                                )
+                                                 root_dir=SPE_DIR,
+                                                 transform=None, 
+                                                 target_transform=smoothing_label(),
+                                                 )
             
             
         transform_train1 = transforms.Compose([T.FrequencyMasking(FREQ_MASK_PARAM),
-                                            T.TimeMasking(TIME_MASK_PARAN), 
-                                            permute_spec()                                                                     
-                                            ])
+                                               T.TimeMasking(TIME_MASK_PARAN), 
+                                               permute_spec()                                                                     
+                                              ])
 
         # data augmentation only in train data
         train_data_trf1 = SeizureDatasetLabelTime(file=train_df,
-                                                root_dir=SPE_DIR,
-                                                transform=transform_train1, 
-                                                target_transform=smoothing_label() 
-                                                )
+                                                  root_dir=SPE_DIR,
+                                                  transform=transform_train1, 
+                                                  target_transform=smoothing_label() 
+                                                 )
 
         train_data = torch.utils.data.ConcatDataset([train_data_ori, train_data_trf1])
 

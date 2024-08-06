@@ -336,18 +336,52 @@ def get_patient_PE(data_file, magicword_1):
 
     return hosp, subject, PE
 
-def get_spectrogram(signal, fs, n_fft = 256, win_len = None, hop_len = None,
-                    power = 2.0):
-    wind_dic={
-              'periodic':True,
-              'beta':10}
-    spectrogram = T.Spectrogram(n_fft=n_fft, win_length=win_len,
-                                hop_length=hop_len, pad=0,
-                                window_fn =torch.kaiser_window,
-                                normalized=False,
-                                power=power, wkwargs=wind_dic)
-    time = np.arange(win_len/2, signal.shape[-1] + win_len/2 + 1,
-                     win_len - (win_len-hop_len))/float(fs)
+def get_spectrogram_1(signal, fs, n_fft = 256, win_len = None, hop_len = None, power = 2.0):
+    wind_dic={'periodic': True, 'beta': 10}
+    spectrogram = T.Spectrogram(n_fft=n_fft, 
+                                win_length=win_len,
+                                hop_length=hop_len, 
+                                pad=0,
+                                window_fn = torch.kaiser_window,
+                                normalized= False,
+                                power=power, 
+                                wkwargs=wind_dic
+                               )
+    
+    time  = np.arange(win_len/2, signal.shape[-1] + win_len/2 + 1, win_len - (win_len-hop_len))/float(fs)
     time -= (win_len/2) / float(fs)
     freqs = sp_fft.rfftfreq(n_fft, 1/fs)
+
     return spectrogram(signal), time, freqs
+
+
+def get_spectrogram_2(signal, fs, n_fft = 256, win_len = None, hop_len = None, power = 2.0):
+
+    wind_dic={'periodic': True, 'beta': 10}
+
+    spectrogram = T.Spectrogram(
+                                n_fft=n_fft, 
+                                win_length=win_len,
+                                hop_length=hop_len, 
+                                pad=0,
+                                window_fn =torch.kaiser_window,
+                                normalized=False,
+                                power=power, 
+                                wkwargs=wind_dic
+                               )
+
+    time   = np.arange(win_len/2, signal.shape[-1] + win_len/2 + 1, win_len - (win_len-hop_len))/float(fs)
+    time  -= (win_len/2) / float(fs)
+
+    freqs  = sp_fft.rfftfreq(n_fft, 1/fs)
+
+    spec   = spectrogram(signal)
+
+    # spec to DB
+    spec   = librosa.power_to_db(spec, top_db=top_db)
+
+    # save up to 60 Hz
+    idx_60 = np.where(freqs <= 60)[0][-1]
+    spec   = spec[:, :idx_60,:]
+
+    return spec, time, freqs

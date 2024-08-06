@@ -48,11 +48,13 @@ for s in range(len(RNSIDS)):
             file   = X[nfile, :, :]
             signal = torch.from_numpy(file)
             signal = (signal - signal.mean()) / signal.std()
+            signal = signal.to(torch.float32)
 
             # label
             label_time = np.zeros(2)
             label_time[0] = labels[nfile]
-            label_time[1] = int(times[nfile])
+            label_time[1] = times[nfile]
+            label_time.astype(np.float32)
 
             data      = {'iEEG': signal, 'label_time': label_time}
             file_name = hosp_id + '_' + subject_id + '_' + PE_id + '_E' + str(nfile)

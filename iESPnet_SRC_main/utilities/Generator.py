@@ -107,6 +107,60 @@ class SeizureDatasetLabelTime(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         return data, label
+    
+
+class SeizureDatasetLabelTimev2(Dataset):
+    """ Seizure dataset"""
+    def __init__(self, file, root_dir, transform=None, target_transform=None):
+        """
+        Args:
+            file (data frame): data frame with file information.
+
+            root_dir (string): Directory with all the numpy files.
+            transform (callable, optional): Optional transform to be applied
+            on a sample.
+        """
+        # Read the csv file
+        self.seizure_frame = file
+        # read spectrogram path
+        self.root_dir = root_dir
+        # save transform
+        self.transform = transform
+        self.target_transform = target_transform
+        # second column contains the image paths
+        self.iEEG_arr = np.asarray(self.seizure_frame.iloc[:, 1])
+        # third column is the labels
+        self.label_arr = np.asarray(self.seizure_frame.iloc[:, 2])
+        # fourth column is for an operation indicator
+        self.time_arr = np.asarray(self.seizure_frame.iloc[:, 3])
+        # Calculate len
+        self.data_len = len(self.seizure_frame.index)
+
+    def __len__(self):
+        return len(self.seizure_frame)
+    
+
+    def __getitem__(self, idx):
+        # Get image name from the pandas df
+        file_name = self.root_dir + self.iEEG_arr[idx] + '.npy'
+
+        dic = np.load(file_name, allow_pickle=True)
+        data  = dic.item().get('iEEG')
+        label = dic.item().get('label_time')
+
+        time       = np.linspace(0, 90, 181)
+        label_time = np.zeros(181)
+
+        if label[0] == 1:
+            idx_t = np.where(time <= label[1])[0][-1]
+            label_time[idx_t] = 1
+
+        if self.transform:
+            data = self.transform(data)
+        if self.target_transform:
+            label = self.target_transform(label_time)
+        return data, label
+
 
 class SeizureDatasetv2(Dataset):
     """ Seizure dataset"""
