@@ -195,6 +195,86 @@ def training(model, device, train_loader, criterion, optimizer, scheduler, epoch
   
     return train_losses, train_aucpr
 
+def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, criterion, optimizer, scheduler, epoch, figure_path=[]):
+    train_loss = 0.0
+    
+    # train with early stopping to track the training loss as the model trains
+
+    train_losses = []
+    # precision = Precision(average=False, device=device)
+    # recall = Recall(average=False, device=device)
+
+    cont = 0
+    model1.train()
+    model2.train()
+
+    #train_loader es un dataloader que devuelve el eeg y el label continuo suavizado, es decir con el smoothing_label
+    for batch_idx, _data in enumerate(train_loader):
+
+        cont+=1
+        # print(batch_idx)
+
+        eeg, labels = _data # acá sería ideal que el label ya salga
+        eeg, labels = eeg.to(device), labels.to(device)
+
+        # Zero the gradients
+        optimizer.zero_grad(set_to_none=True)
+
+        # Perform forward pass to DSF
+        outputs1 = model1(eeg)  # (batch, n_class)
+
+        # create spectrogram from outputs1
+        spectrograms = get_spectrogram_2(outoputs1) # esta es la función q creaste
+        spectrograms_transformed =  transform_train(spectrograms) # esto es lo que está en el main, la composición de transofrmaciones
+        # contact tensors
+        spectrograms2train = torch.cat((spectrograms, spectrograms_transformed), axis=1) #fijate acá el axis
+        spectrograms2train.to(device)
+        # las labels tb se duplican
+        labels2train = torch.cat((labels, labels), axis=1) #fijate acá el axis
+        # Perform forward pass to iESPnet
+        output2 = model2(spectrograms2train)
+        m = nn.Sigmoid()
+        probs = m(output2)
+        
+        y_true  = torch.max(labels2train, dim =1)[0]
+        y_pred  = torch.max(probs, dim=1)[0]
+        
+        if cont==1:
+            Y_true = y_true
+            Y_pred = y_pred
+
+        else:                
+            Y_true = torch.cat((Y_true, y_true), axis=0)
+            Y_pred = torch.cat((Y_pred, y_pred), axis=0)
+
+
+        # Compute loss
+        loss = criterion(outputs2, labels)
+        # Perform backward pass
+        loss.backward()
+        train_loss += loss.item()
+        # Perform optimization
+        optimizer.step()
+        scheduler.step()
+        
+        # record training loss
+        train_losses.append(loss.item())
+
+        del _data
+        torch.cuda.empty_cache()
+
+    y_val_true, val_pred = Y_true.to('cpu').detach().numpy(), Y_pred.to('cpu').detach().numpy()
+
+    if np.isnan(val_pred).any():
+        print('nan found in pred')
+        train_aucpr = 0
+    else:   
+        train_aucpr= average_precision_score(y_val_true,val_pred)
+        
+    print('Train Epoch: {} \tTrainLoss: {:.6f} \tTrainAUCpr: {:.6f}'.format(epoch, np.mean(train_losses), train_aucpr))
+    return train_losses, train_aucpr
+    
+
 def validate(model, device, val_loader, criterion, epoch, figure_path):
     valid_losses = []
 
