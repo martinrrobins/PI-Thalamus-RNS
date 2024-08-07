@@ -8,6 +8,7 @@ import mne
 from scipy import fft as sp_fft
 import torch
 import torchaudio.transforms as T
+import librosa
 
 def get_subfolders(subject_path, Verbose=False):
     """
@@ -378,6 +379,7 @@ def get_spectrogram_2(signal, fs, n_fft = 256, win_len = None, hop_len = None, p
     spec   = spectrogram(signal)
 
     # spec to DB
+    top_db = 40.0
     spec   = librosa.power_to_db(spec, top_db=top_db)
 
     # save up to 60 Hz

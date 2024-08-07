@@ -19,6 +19,8 @@ from torch import nn
 from pytorchtools import EarlyStopping
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
+from IO import get_spectrogram_2
+
 #%%
 def train_model(model, hparams, epochs, train_data, val_data, sampler, save_path, figure_path, patience):
     # train model with early stopping
@@ -80,7 +82,7 @@ def train_model(model, hparams, epochs, train_data, val_data, sampler, save_path
     return avg_train_losses, avg_valid_losses, avg_train_accs, avg_valid_accs
 
 
-def train_model_opt(model, hparams, epochs, train_data, sampler, save_path):
+def train_model_opt(model, hparams, epochs, train_data, sampler, save_path): # agregar transform_train 
     # train model until the indicated number of epochs
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
