@@ -140,17 +140,17 @@ def main():
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
 
         outputfile = save_models + 'model'
-        avg_train_losses, avg_train_f1= train_model_opt(model, hparams, epochs, train_data, sampler, outputfile)
+        avg_train_losses, avg_train_f1 = train_model_opt(model, hparams, epochs, train_data, sampler, outputfile)
                 
         best_thr = 0.2
         best_path = save_models + 'model_opt.pth'
                 
         # in testing
-        outputs_test=test_model(model, hparams, best_path, test_data)
+        outputs_test  = test_model(model, hparams, best_path, test_data)
         prediction_te = get_performance_indices(outputs_test['y_true'], outputs_test['y_prob'], best_thr)
                 
         # in training
-        outputs_train=test_model(model, hparams, best_path, train_data_ori)
+        outputs_train = test_model(model, hparams, best_path, train_data_ori)
         prediction_tr = get_performance_indices(outputs_train['y_true'], outputs_train['y_prob'], best_thr)
                 
         predict_ = { 
@@ -161,7 +161,6 @@ def main():
                     "hparams"      : hparams, 
                     "threshold"    : 0.2, 
                     "train_size"   : len(train_data_ori)/len(df_meta)
-
                     }
         np.save(save_predictions+ patients[s]+ 'results.npy', predict_)
                 
