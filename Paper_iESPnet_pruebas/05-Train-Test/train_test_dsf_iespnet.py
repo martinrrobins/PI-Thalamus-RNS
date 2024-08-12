@@ -24,7 +24,6 @@ from models                         import DynamicSpatialFilter
 # set the seed for reproducibility
 torch.manual_seed(0)
 
-
 # direccion donde se encuentran los espectrogramas 
 SPE_DIR        = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
 meta_data_file = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
