@@ -82,11 +82,11 @@ def train_model(model, hparams, epochs, train_data, val_data, sampler, save_path
     return avg_train_losses, avg_valid_losses, avg_train_accs, avg_valid_accs
 
 
-def train_model_opt(model, hparams, epochs, train_data, sampler, save_path): # agregar transform_train 
+def train_model_opt(model, hparams, epochs, train_data, sampler, save_path):
     # train model until the indicated number of epochs
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
-    avg_train_accs = []
+    avg_train_accs   = []
   
     
     use_cuda = torch.cuda.is_available()
@@ -128,7 +128,62 @@ def train_model_opt(model, hparams, epochs, train_data, sampler, save_path): # a
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             }, save_path + '_opt.pth') 
-    return avg_train_losses, avg_train_accs,
+    return avg_train_losses, avg_train_accs
+
+def train_model_optv2(model, hparams, epochs, train_data, transform_train, sampler, save_path):
+    # train model until the indicated number of epochs
+    # to track the average training loss per epoch as the model trains
+    avg_train_losses = []
+    avg_train_accs   = []
+  
+    
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print('Using {} device'.format(device))
+    # following pytorch suggestion to speed up training
+    torch.backends.cudnn.benchmark = True
+
+
+    kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
+    train_loader = DataLoader(train_data, batch_size=hparams["batch_size"], sampler=sampler, **kwargs)
+    
+    #move model to device
+    model.to(device)
+
+    print('Num Model Parameters', sum([param.nelement() for param in model.parameters()]))
+    optimizer = optim.AdamW(model.parameters(), hparams['learning_rate'], weight_decay=1e-4)
+
+   
+    scheduler = optim.lr_scheduler.OneCycleLR(
+                                              optimizer, 
+                                              max_lr          = hparams['learning_rate'], 
+                                              steps_per_epoch = int(len(train_loader)),
+                                              epochs          = hparams['epochs'],
+                                              anneal_strategy = 'linear'
+                                             )
+        
+    criterion = nn.BCEWithLogitsLoss().to(device)
+ 
+    for epoch in range(1, epochs + 1):
+        # agregar todos los argumentos necesarios
+        train_losses, train_aucpr = training_DSF_iESPnet(model, device, train_loader, transform_train, criterion, optimizer, scheduler, epoch)
+        
+        train_loss = np.average(train_losses)
+
+        avg_train_losses.append(train_loss)
+        
+        avg_train_accs.append(train_aucpr)
+
+    print('savinf the model')
+
+    torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+               }, save_path + '_opt.pth')
+    
+    return avg_train_losses, avg_train_accs
+
 
 def training(model, device, train_loader, criterion, optimizer, scheduler, epoch, figure_path=[]):
     data_len = len(train_loader.dataset)
@@ -251,7 +306,7 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
 
 
         # Compute loss
-        loss = criterion(outputs2, labels)
+        loss = criterion(outputs2, labels2train)
         # Perform backward pass
         loss.backward()
         train_loss += loss.item()

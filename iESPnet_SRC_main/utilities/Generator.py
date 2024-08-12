@@ -287,7 +287,7 @@ class permute_spec(object):
             idx = random.sample(S,4)
             if idx != [0, 1, 2, 3]:
                 out=False        
-        data = data[idx]  
+        data = data[:, idx, :, :]  # cambio por data [idx]
         return data
 
 class smoothing_label(object):
