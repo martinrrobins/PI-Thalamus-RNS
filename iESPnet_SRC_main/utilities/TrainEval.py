@@ -156,12 +156,15 @@ def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_tra
     print('Num Model Parameters', sum([param1.nelement() for param1 in model1.parameters()]))
     print('Num Model Parameters', sum([param2.nelement() for param2 in model2.parameters()]))
 
-    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate'], weight_decay=1e-4)
+    # para dsf: weight_decay       = 0.001
+    # para dsf: lr                 = 0.0004
+
+    optimizer1 = optim.AdamW(model1.parameters(), lr = 0.001, weight_decay=0.01)
     optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate'], weight_decay=1e-4)
 
     scheduler1 = optim.lr_scheduler.OneCycleLR(
                                                optimizer1, 
-                                               max_lr          = hparams['learning_rate'], 
+                                               max_lr          = 0.0004, 
                                                steps_per_epoch = int(len(train_loader)),
                                                epochs          = hparams['epochs'],
                                                anneal_strategy = 'linear'
