@@ -67,7 +67,7 @@ hparams = {
 
 def main():
     
-    s = 0  # for s in range (0,15):
+    s = 28  # for s in range (0,15):
 
     model1 = DynamicSpatialFilter(
                               n_channels, 
@@ -164,7 +164,7 @@ def main():
                 "train_size"   : len(train_data)/len(df_meta) # verificar tamaño de train data
                }
     
-    np.save(save_predictions+ patients[s]+ 'results.npy', predict_)
+    np.save(save_predictions + patients[s] + 'results.npy', predict_)
                 
     del train_data, test_data
 

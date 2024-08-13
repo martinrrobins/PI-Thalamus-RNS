@@ -200,9 +200,11 @@ def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_tra
     print('saving the model')
 
     torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
+                'epoch': 1,
+                'model_state_dict1': model1.state_dict(),
+                'model_state_dict2': model2.state_dict(),
+                'optimizer_state_dict1': optimizer1.state_dict(),
+                'optimizer_state_dict2': optimizer2.state_dict(),
                }, save_path + '_opt.pth')
     
     return avg_train_losses, avg_train_accs
