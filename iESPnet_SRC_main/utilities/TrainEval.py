@@ -458,8 +458,7 @@ def test_modelv2(model1, model2, hparams, model_path, test_data):
     model2.load_state_dict(checkpoint['model_state_dict2'])
   
     test_loader = DataLoader(test_data, batch_size=hparams['batch_size'], shuffle=False,**kwargs)
-    
-    outputs = get_prediction(model1, model2, device, test_loader)
+    outputs = get_predictionv2(model1, model2, device, test_loader)
     # Process is completed.
     print('Testing process has finished.')
     return outputs
@@ -618,13 +617,13 @@ def get_predictionv2(model1, model2, device, loader):
             outputs1 = model1(eeg)
             outputs1 = outputs1.squeeze(1)
             outputs1 = outputs1.to('cpu')
-
+           
             spectrograms = get_spectrogram_2(outputs1, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
             spectrograms = torch.from_numpy(spectrograms)
             spectrograms = spectrograms.to(device)
-
+       
             outputs2 = model2(spectrograms)
-
+         
             m     = nn.Sigmoid()
             probs = m(outputs2)
 
@@ -661,6 +660,8 @@ def get_predictionv2(model1, model2, device, loader):
                 't_true': t_true,
                 'l_true': l_true
                }
+    
+    return prediction
 
 def get_thr(rang, y_true, y_probs):
     # inputs should be of size n_samples x n_time
