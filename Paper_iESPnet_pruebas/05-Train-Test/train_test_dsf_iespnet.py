@@ -70,11 +70,11 @@ def main():
     s = 28  # for s in range (0,15):
 
     model1 = DynamicSpatialFilter(
-                              n_channels, 
-                              mlp_input            = mlp_input, 
-                              n_out_channels       = dsf_n_out_channels, 
-                              apply_soft_thresh    = dsf_soft_thresh
-                             )
+                                  n_channels, 
+                                  mlp_input            = mlp_input, 
+                                  n_out_channels       = dsf_n_out_channels, 
+                                  apply_soft_thresh    = dsf_soft_thresh
+                                 )
 
     model2 = iESPnet(
                      hparams['n_cnn_layers'],
