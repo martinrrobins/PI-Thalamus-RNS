@@ -9,8 +9,8 @@ import librosa
 import utilit_espectrograms as ue
 
 DATA_DIR        = '/media/martin/Disco2/Rns_Data/RNS_ESPM_datatransfer/Data'
-OUTDATA_DIR     = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
-OUTMETADATA_DIR = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/'
+OUTDATA_DIR     = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG_PROCESS/'
+OUTMETADATA_DIR = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG_PROCESS/METADATA/'
 
 # crear las carpetas en caso de que no existan
 
@@ -49,6 +49,18 @@ for s in range(len(RNSIDS)):
             signal = torch.from_numpy(file)
             signal = (signal - signal.mean()) / signal.std()
             signal = signal.to(torch.float32)
+
+            # Calcular los cuartiles y el rango intercuartil
+            Q1 = signal.quantile(0.25)
+            Q3 = signal.quantile(0.75)
+            IQR = Q3 - Q1
+
+            # Definir los límites para los valores atípicos
+            lim_inf = Q1 - 1.5 * IQR
+            lim_sup = Q3 + 1.5 * IQR
+
+            outliers = (signal < lim_inf) | (signal > lim_sup)
+            signal[outliers] = 0
 
             # label
             label_time = np.zeros(2)
