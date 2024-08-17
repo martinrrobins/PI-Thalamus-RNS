@@ -315,6 +315,11 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
         # Perform forward pass to DSF
         outputs1 = model1(eeg)  # (batch, n_class)
         outputs1 = outputs1.squeeze(1)
+
+        mean = outputs1.mean(dim=2, keepdim=True)
+        std  = outputs1.std(dim=2, keepdim=True)  
+
+        outputs1 = (outputs1 - mean) / std
         outputs1 = outputs1.to('cpu')
 
         # create spectrogram from outputs1
