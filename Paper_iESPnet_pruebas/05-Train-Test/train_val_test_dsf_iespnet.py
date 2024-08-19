@@ -85,127 +85,131 @@ for s in range(len(vali_id)):
     train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
 
 # experimentos que se van a realizar
-experiments = ['exp1.1','exp1.2','exp1.3']
+experiments_1 = ['exp1','exp2','exp3']
+experiments_2 = ['.1','.2','.3']
+
 
 def main():
-    for s in range (len(experiments)):
-        model1 = DynamicSpatialFilter(
-                                      n_channels, 
-                                      mlp_input            = mlp_input, 
-                                      n_out_channels       = dsf_n_out_channels, 
-                                      apply_soft_thresh    = dsf_soft_thresh
-                                     )
-        
-        model2 = iESPnet(
-                         hparams['n_cnn_layers'],
-                         hparams['n_rnn_layers'],
-                         hparams['rnn_dim'],
-                         hparams['n_class'],
-                         hparams['out_ch'],
-                         hparams['dropout'],
-                        )
-        
-        save_runs        = save_path + experiments[s] + '/runs/'
-        save_models      = save_path + experiments[s] + '/models/'
-        save_predictions = save_path + experiments[s] + '/results/'
-        save_figs        = save_path + experiments[s] + '/figs/'
-
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
+    for s in range (len(experiments_1)):
+        for j in range(len(experiments_2)):
+            model1 = DynamicSpatialFilter(
+                                          n_channels, 
+                                          mlp_input            = mlp_input, 
+                                          n_out_channels       = dsf_n_out_channels, 
+                                          apply_soft_thresh    = dsf_soft_thresh
+                                         )
             
-        if not os.path.exists(save_runs):
-            os.makedirs(save_runs)
+            model2 = iESPnet(
+                             hparams['n_cnn_layers'],
+                             hparams['n_rnn_layers'],
+                             hparams['rnn_dim'],
+                             hparams['n_class'],
+                             hparams['out_ch'],
+                             hparams['dropout'],
+                            )
             
-        if not os.path.exists(save_models):
-            os.makedirs(save_models)
+            save_runs        = save_path + experiments_1[s] + '/' + str(experiments_1[s]) + str(experiments_2[j]) + '/runs/'
+            save_models      = save_path + experiments_1[s] + '/' + str(experiments_1[s]) + str(experiments_2[j]) + '/models/'
+            save_predictions = save_path + experiments_1[s] + '/' + str(experiments_1[s]) + str(experiments_2[j]) + '/results/'
+            save_figs        = save_path + experiments_1[s] + '/' + str(experiments_1[s]) + str(experiments_2[j]) + '/figs/'
+
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+
+            if not os.path.exists(save_runs):
+                os.makedirs(save_runs)
+
+            if not os.path.exists(save_models):
+                os.makedirs(save_models)
+
+            if not os.path.exists(save_predictions):
+                os.makedirs(save_predictions)
+
+            if not os.path.exists(save_figs):
+                os.makedirs(save_figs)
             
-        if not os.path.exists(save_predictions):
-            os.makedirs(save_predictions)
+            print('Running training for: ' + experiments_1[s] +  experiments_2[j])
+    
+            # Dataloaders creados
+            train_data = SeizureDatasetLabelTimev2(
+                                                   file             = train_df,
+                                                   root_dir         = SPE_DIR,
+                                                   transform        = None, 
+                                                   target_transform = smoothing_label(),
+                                                  )
             
-        if not os.path.exists(save_figs):
-            os.makedirs(save_figs)
-        
-        print('Running training for: ' + experiments[s])
-
-        # Dataloaders creados
-        train_data = SeizureDatasetLabelTimev2(
-                                               file             = train_df,
-                                               root_dir         = SPE_DIR,
-                                               transform        = None, 
-                                               target_transform = smoothing_label(),
-                                              )
-        
-        # testing data should be balanced, just be "as it is"
-        test_data  = SeizureDatasetLabelTimev2(
-                                               file             = test_df,
-                                               root_dir         = SPE_DIR,
-                                               transform        = None,
-                                               target_transform = smoothing_label()  
-                                              )
-        
-        # validation data should be balanced, just be "as it is"
-        vali_data  = SeizureDatasetLabelTimev2(
-                                               file             = vali_df,
-                                               root_dir         = SPE_DIR,
-                                               transform        = None,
-                                               target_transform = smoothing_label()  
-                                              )
-        
-        # data augmentation 
-        transform_train = transforms.Compose([
-                                              T.FrequencyMasking(FREQ_MASK_PARAM),
-                                              T.TimeMasking(TIME_MASK_PARAN), 
-                                              permute_spec()                                                                     
-                                            ])
-        
-        weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=1)
-        sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
-
-        outputfile = save_models + 'model_' + str(experiments[s])
-        avg_train_losses, train_accs, avg_valid_losses, valid_accs = train_model_v2(
-                                                                                    model1, 
-                                                                                    model2, 
-                                                                                    hparams, 
-                                                                                    epochs, 
-                                                                                    train_data, 
-                                                                                    vali_data, 
-                                                                                    transform_train, 
-                                                                                    sampler, 
-                                                                                    outputfile,
-                                                                                    experiments[s]
-                                                                                   )
-        
-        best_thr  = 0.2
-        best_path = outputfile + '.pth'
-
-        # in validation
-        outputs_vali = test_model_v2(model1, model2, hparams, best_path, vali_data, experiments[s])
-        prediction_va = get_performance_indices(outputs_vali['y_true'], outputs_vali['y_prob'], best_thr)
-
-        # in testing
-        outputs_test  = test_model_v2(model1, model2, hparams, best_path, test_data, experiments[s])
-        prediction_te = get_performance_indices(outputs_test['y_true'], outputs_test['y_prob'], best_thr)
-
-        # in training
-        outputs_train = test_model_v2(model1, model2, hparams, best_path, train_data, experiments[s])
-        prediction_tr = get_performance_indices(outputs_train['y_true'], outputs_train['y_prob'], best_thr)
-
-        predict_ = { 
-            "train_losses" : avg_train_losses,
-            "train_acupr"  : train_accs,
-            "valid_losses" : avg_valid_losses, 
-            "valid_acupr"  : valid_accs,
-            "prediction_va": prediction_va, 
-            "prediction_te": prediction_te,
-            "prediction_tr": prediction_tr, 
-            "hparams"      : hparams, 
-            "threshold"    : 0.2, 
-            "train_size"   : len(train_data)/len(df_meta) # verificar tamaño de train data
-            }
-
-        np.save(save_predictions + experiments[s] + 'results.npy', predict_)
-
-        del train_data, test_data, vali_data
+            # testing data should be balanced, just be "as it is"
+            test_data  = SeizureDatasetLabelTimev2(
+                                                   file             = test_df,
+                                                   root_dir         = SPE_DIR,
+                                                   transform        = None,
+                                                   target_transform = smoothing_label()  
+                                                  )
+            
+            # validation data should be balanced, just be "as it is"
+            vali_data  = SeizureDatasetLabelTimev2(
+                                                   file             = vali_df,
+                                                   root_dir         = SPE_DIR,
+                                                   transform        = None,
+                                                   target_transform = smoothing_label()  
+                                                  )
+            
+            # data augmentation 
+            transform_train = transforms.Compose([
+                                                  T.FrequencyMasking(FREQ_MASK_PARAM),
+                                                  T.TimeMasking(TIME_MASK_PARAN), 
+                                                  permute_spec()                                                                     
+                                                ])
+            
+            weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=1)
+            sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
+    
+            outputfile = save_models + 'model_' + str(experiments_1[s] + experiments_2[j])
+            avg_train_losses, train_accs, avg_valid_losses, valid_accs = train_model_v2(
+                                                                                        model1, 
+                                                                                        model2, 
+                                                                                        hparams, 
+                                                                                        epochs, 
+                                                                                        train_data, 
+                                                                                        vali_data, 
+                                                                                        transform_train, 
+                                                                                        sampler, 
+                                                                                        outputfile,
+                                                                                        experiments_1[s],
+                                                                                        experiments_2[j]
+                                                                                       )
+            
+            best_thr  = 0.2
+            best_path = outputfile + '.pth'
+    
+            # in validation
+            outputs_vali  = test_model_v2(model1, model2, hparams, best_path, vali_data, experiments_1[s], experiments_2[j])
+            prediction_va = get_performance_indices(outputs_vali['y_true'], outputs_vali['y_prob'], best_thr)
+    
+            # in testing
+            outputs_test  = test_model_v2(model1, model2, hparams, best_path, test_data, experiments_1[s], experiments_2[j])
+            prediction_te = get_performance_indices(outputs_test['y_true'], outputs_test['y_prob'], best_thr)
+    
+            # in training
+            outputs_train = test_model_v2(model1, model2, hparams, best_path, train_data, experiments_1[s], experiments_2[j])
+            prediction_tr = get_performance_indices(outputs_train['y_true'], outputs_train['y_prob'], best_thr)
+    
+            predict_ = { 
+                        "train_losses" : avg_train_losses,
+                        "train_acupr"  : train_accs,
+                        "valid_losses" : avg_valid_losses, 
+                        "valid_acupr"  : valid_accs,
+                        "prediction_va": prediction_va, 
+                        "prediction_te": prediction_te,
+                        "prediction_tr": prediction_tr, 
+                        "hparams"      : hparams, 
+                        "threshold"    : 0.2, 
+                        "train_size"   : len(train_data)/len(df_meta) # verificar tamaño de train data
+                       }
+    
+            np.save(save_predictions + 'results.npy', predict_)
+    
+            del train_data, test_data, vali_data
 
 if __name__=='__main__':
     main()
