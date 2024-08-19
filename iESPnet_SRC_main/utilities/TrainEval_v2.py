@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from IO import get_spectrogram_2
 
-def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path, experiment_db):
+def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path, experiment_1, experiment_2):
     # train model until the indicated number of epochs
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
@@ -88,17 +88,19 @@ def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, trans
                                                          scheduler1, 
                                                          scheduler2, 
                                                          epoch,
-                                                         experiment_db
+                                                         experiment_1,
+                                                         experiment_2
                                                         )
         
         valid_losses, valid_aucpr = validate_v2(
                                                 model1,
                                                 model2,
-                                                experiment_db,
                                                 device, 
                                                 valid_loader, 
                                                 criterion, 
-                                                epoch
+                                                epoch,
+                                                experiment_1,
+                                                experiment_2
                                                )
         
         train_loss = np.average(train_losses)
@@ -122,7 +124,7 @@ def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, trans
     
     return avg_train_losses, train_accs, avg_valid_losses, valid_accs
 
-def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, criterion, optimizer1, optimizer2, scheduler1, scheduler2, epoch, experiment_db):  
+def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, criterion, optimizer1, optimizer2, scheduler1, scheduler2, epoch, experiment_1, experiment_2):  
     # create spectrogram
     ECOG_SAMPLE_RATE = 250
     ECOG_CHANNELS    = 4
@@ -131,11 +133,11 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
     overlap          = 500 
     SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) # Length of hop between windows.
     SPEC_NFFT        = 500  # to see changes in 0.5 reso
-    if   experiment_db == 'exp1.1':  
+    if   experiment_2 == '.1':  
         top_db       = 40.0
-    elif experiment_db == 'exp1.2':
+    elif experiment_2 == '.2':
         top_db       = 60.0
-    elif experiment_db == 'exp1.3':
+    elif experiment_2 == '.3':
         top_db       = 80.0
 
     train_loss = 0.0
@@ -165,9 +167,16 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
         outputs1 = model1(eeg)  # (batch, n_class)
         outputs1 = outputs1.squeeze(1)
 
-        #mean = outputs1.mean(dim=2, keepdim=True)
-        #std  = outputs1.std(dim=2, keepdim=True)  
-        #outputs1 = (outputs1 - mean) / std
+        if   experiment_1 == 'exp1': # sin normalizacion 
+            pass
+        elif experiment_1 == 'exp2': # normalizacion por canal
+            mean     = outputs1.mean(dim=2, keepdim=True)
+            std      = outputs1.std(dim=2, keepdim=True)
+
+            outputs1 = (outputs1 - mean) / std
+
+        elif experiment_1 == 'exp3': # normalizacion global
+            outputs1 = (outputs1 - outputs1.mean()) / outputs1.std()
         
         outputs1 = outputs1.to('cpu')
 
@@ -232,7 +241,7 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
     print('Train Epoch: {} \tTrainLoss: {:.6f} \tTrainAUCpr: {:.6f}'.format(epoch, np.mean(train_losses), train_aucpr))
     return train_losses, train_aucpr
 
-def validate_v2(model1, model2, experiment_db, device, val_loader, criterion, epoch):
+def validate_v2(model1, model2, device, val_loader, criterion, epoch, experiment_1, experiment_2):
     
     ECOG_SAMPLE_RATE = 250
     ECOG_CHANNELS    = 4
@@ -241,11 +250,11 @@ def validate_v2(model1, model2, experiment_db, device, val_loader, criterion, ep
     overlap          = 500 
     SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) 
     SPEC_NFFT        = 500
-    if   experiment_db == 'exp1.1':  
+    if   experiment_2 == '.1':  
         top_db       = 40.0
-    elif experiment_db == 'exp1.2':
+    elif experiment_2 == '.2':
         top_db       = 60.0
-    elif experiment_db == 'exp1.3':
+    elif experiment_2 == '.3':
         top_db       = 80.0
 
     valid_losses = []
@@ -261,7 +270,19 @@ def validate_v2(model1, model2, experiment_db, device, val_loader, criterion, ep
             eeg, labels = eeg.to(device), labels.to(device)
             outputs1    = model1(eeg)
             outputs1    = outputs1.squeeze(1)
-            outputs1    = outputs1.to('cpu')
+
+            if   experiment_1 == 'exp1': # sin normalizacion 
+                pass
+            elif experiment_1 == 'exp2': # normalizacion por canal
+                mean     = outputs1.mean(dim=2, keepdim=True)
+                std      = outputs1.std(dim=2, keepdim=True)
+
+                outputs1 = (outputs1 - mean) / std
+
+            elif experiment_1 == 'exp3': # normalizacion global
+                outputs1 = (outputs1 - outputs1.mean()) / outputs1.std()
+
+            outputs1     = outputs1.to('cpu')
 
             # create spectrogram from outputs1
             spectrograms = get_spectrogram_2(outputs1, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
@@ -301,7 +322,7 @@ def validate_v2(model1, model2, experiment_db, device, val_loader, criterion, ep
    
     return valid_losses, valid_aucpr
 
-def test_model_v2(model1, model2, hparams, model_path, test_data, experiment_db):
+def test_model_v2(model1, model2, hparams, model_path, test_data, experiment_1, experiment_2):
     use_cuda = torch.cuda.is_available()
     device   = torch.device("cuda" if use_cuda else "cpu")
     print('Using {} device'.format(device))
@@ -318,12 +339,13 @@ def test_model_v2(model1, model2, hparams, model_path, test_data, experiment_db)
     model2.load_state_dict(checkpoint['model_state_dict2'])
   
     test_loader = DataLoader(test_data, batch_size=hparams['batch_size'], shuffle=False,**kwargs)
-    outputs = get_prediction_v2(model1, model2, device, test_loader, experiment_db)
+    outputs     = get_prediction_v2(model1, model2, device, test_loader, experiment_1, experiment_2)
     # Process is completed.
     print('Testing process has finished.')
     return outputs
 
-def get_prediction_v2(model1, model2, device, loader, experiment_db):
+
+def get_prediction_v2(model1, model2, device, loader, experiment_1, experiment_2):
     # create spectrogram
     ECOG_SAMPLE_RATE = 250
     ECOG_CHANNELS    = 4
@@ -332,11 +354,11 @@ def get_prediction_v2(model1, model2, device, loader, experiment_db):
     overlap          = 500 
     SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) # Length of hop between windows.
     SPEC_NFFT        = 500  # to see changes in 0.5 reso
-    if   experiment_db == 'exp1.1':  
+    if   experiment_2 == 'exp1.1':  
         top_db       = 40.0
-    elif experiment_db == 'exp1.2':
+    elif experiment_2 == 'exp1.2':
         top_db       = 60.0
-    elif experiment_db == 'exp1.3':
+    elif experiment_2 == 'exp1.3':
         top_db       = 80.0
     
     model1.to(device)
@@ -344,6 +366,7 @@ def get_prediction_v2(model1, model2, device, loader, experiment_db):
 
     model1.eval()
     model2.eval()
+
     with torch.no_grad():
         for i, data_ in enumerate(loader):
             eeg, labels = data_
@@ -351,6 +374,18 @@ def get_prediction_v2(model1, model2, device, loader, experiment_db):
             
             outputs1 = model1(eeg)
             outputs1 = outputs1.squeeze(1)
+
+            if   experiment_1 == 'exp1': # sin normalizacion 
+                pass
+            elif experiment_1 == 'exp2': # normalizacion por canal
+                mean     = outputs1.mean(dim=2, keepdim=True)
+                std      = outputs1.std(dim=2, keepdim=True)
+
+                outputs1 = (outputs1 - mean) / std
+
+            elif experiment_1 == 'exp3': # normalizacion global
+                outputs1 = (outputs1 - outputs1.mean()) / outputs1.std()
+
             outputs1 = outputs1.to('cpu')
            
             spectrograms = get_spectrogram_2(outputs1, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)

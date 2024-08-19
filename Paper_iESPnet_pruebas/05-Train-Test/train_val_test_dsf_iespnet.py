@@ -8,25 +8,22 @@ import pandas                   as pd
 import numpy                    as np
 
 from torchvision       import transforms
+from utilit_train_test import make_weights_for_balanced_classes
 
 sys.path.append(os.path.abspath(os.path.join('..','..','iESPnet_SRC_main','utilities')))
 from Generator         import SeizureDatasetLabelTimev2, permute_spec, smoothing_label
 from Model             import iESPnet
 from TrainEval         import train_model_v2, test_model_v2, get_performance_indices
 
-
-sys.path.append(os.path.abspath(os.path.join('..','05-Train-Test')))
-from utilit_train_test import make_weights_for_balanced_classes
-
-sys.path.append(os.path.abspath(os.path.join('../../..','03 Dynamic-Spatial-Filtering')))
+sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filtering')))
 from models            import DynamicSpatialFilter
 
 # set the seed for reproducibility
 torch.manual_seed(0)
 
 # direccion donde se encuentran los espectrogramas 
-SPE_DIR        = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG_PROCESS/'
-meta_data_file = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG_PROCESS/METADATA/allfiles_metadata.csv'
+SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/'
+meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/METADATA/allfiles_metadata.csv'
 
 df_meta        = pd.read_csv(meta_data_file)
 
