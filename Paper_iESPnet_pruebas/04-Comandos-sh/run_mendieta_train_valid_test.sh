@@ -9,7 +9,7 @@
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10       # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --time=1-00:00           # total run time limit (<days>-<hours>:<minutes>)
+#SBATCH --time=1-05:00           # total run time limit (<days>-<hours>:<minutes>)
 
 . /etc/profile
 module purge
