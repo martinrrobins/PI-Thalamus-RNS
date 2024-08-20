@@ -806,11 +806,11 @@ def get_prediction_v2(model1, model2, device, loader, experiment_1, experiment_2
     overlap          = 500 
     SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) # Length of hop between windows.
     SPEC_NFFT        = 500  # to see changes in 0.5 reso
-    if   experiment_2 == 'exp1.1':  
+    if   experiment_2 == '.1':  
         top_db       = 40.0
-    elif experiment_2 == 'exp1.2':
+    elif experiment_2 == '.2':
         top_db       = 60.0
-    elif experiment_2 == 'exp1.3':
+    elif experiment_2 == '.3':
         top_db       = 80.0
     
     model1.to(device)
