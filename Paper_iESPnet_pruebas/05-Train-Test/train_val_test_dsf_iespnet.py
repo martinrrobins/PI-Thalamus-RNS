@@ -1,6 +1,7 @@
 import sys
 import os
 import torch
+import random
 
 import torchaudio.transforms    as T
 import torch.optim              as optim
@@ -15,15 +16,17 @@ from Generator         import SeizureDatasetLabelTimev2, permute_spec, smoothing
 from Model             import iESPnet
 from TrainEval         import train_model_v2, test_model_v2, get_performance_indices
 
-sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filtering')))
+sys.path.append(os.path.abspath(os.path.join('../../..','03 Dynamic-Spatial-Filtering')))
 from models            import DynamicSpatialFilter
 
 # set the seed for reproducibility
 torch.manual_seed(0)
+random.seed(0)
+np.random.seed(0)
 
 # direccion donde se encuentran los espectrogramas 
-SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/'
-meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/METADATA/allfiles_metadata.csv'
+SPE_DIR        = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
+meta_data_file = '/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
 
 df_meta        = pd.read_csv(meta_data_file)
 

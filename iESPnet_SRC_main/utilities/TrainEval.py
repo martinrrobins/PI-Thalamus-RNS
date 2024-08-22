@@ -169,7 +169,7 @@ def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, trans
 
     scheduler1 = optim.lr_scheduler.OneCycleLR(
                                                optimizer1, 
-                                               max_lr          = 0.0004, 
+                                               max_lr          = hparams['learning_rate'], 
                                                steps_per_epoch = int(len(train_loader)),
                                                epochs          = hparams['epochs'],
                                                anneal_strategy = 'linear'
@@ -267,7 +267,7 @@ def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_tra
 
     scheduler1 = optim.lr_scheduler.OneCycleLR(
                                                optimizer1, 
-                                               max_lr          = 0.0004, 
+                                               max_lr          = hparams['learning_rate'],  
                                                steps_per_epoch = int(len(train_loader)),
                                                epochs          = hparams['epochs'],
                                                anneal_strategy = 'linear'
@@ -424,7 +424,7 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
         # Perform forward pass to DSF
         outputs1 = model1(eeg)  # (batch, n_class)
         outputs1 = outputs1.squeeze(1)
-
+        
         if   experiment_1 == 'exp1': # sin normalizacion 
             pass
         elif experiment_1 == 'exp2': # normalizacion por canal
@@ -439,7 +439,7 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
         outputs1 = outputs1.to('cpu')
 
         # create spectrogram from outputs1
-        spectrograms = get_spectrogram_2(outputs1, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
+        spectrograms = get_spectrogram_2(outputs1, device, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
         spectrograms = torch.from_numpy(spectrograms)
 
         spectrograms_transformed = transform_train(spectrograms) 
@@ -586,7 +586,7 @@ def validate_v2(model1, model2, device, val_loader, criterion, epoch, experiment
             outputs1     = outputs1.to('cpu')
 
             # create spectrogram from outputs1
-            spectrograms = get_spectrogram_2(outputs1, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
+            spectrograms = get_spectrogram_2(outputs1, device, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
             spectrograms = torch.from_numpy(spectrograms)
             spectrograms = spectrograms.to(device)
 
@@ -840,7 +840,7 @@ def get_prediction_v2(model1, model2, device, loader, experiment_1, experiment_2
 
             outputs1 = outputs1.to('cpu')
            
-            spectrograms = get_spectrogram_2(outputs1, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
+            spectrograms = get_spectrogram_2(outputs1, device, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
             spectrograms = torch.from_numpy(spectrograms)
             spectrograms = spectrograms.to(device)
        

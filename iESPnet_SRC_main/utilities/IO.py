@@ -224,9 +224,11 @@ def get_patient_PE(data_file, magicword_1):
 
     return hosp, subject, PE
 
-def get_spectrogram_2(signal, fs, n_fft = 256, win_len = None, hop_len = None, top_db = 40.0, power = 2.0):
+def get_spectrogram_2(signal, device, fs, n_fft = 256, win_len = None, hop_len = None, top_db = 40.0, power = 2.0):
 
-    wind_dic={'periodic': True, 'beta': 10}
+    np.random.seed(0)
+
+    wind_dic = {'periodic': True, 'beta': 10}
 
     spectrogram = T.Spectrogram(
                                 n_fft=n_fft, 
@@ -238,6 +240,8 @@ def get_spectrogram_2(signal, fs, n_fft = 256, win_len = None, hop_len = None, t
                                 power=power, 
                                 wkwargs=wind_dic
                                )
+    
+    #spectrogram = spectrogram.to(device)
     
     time   = np.arange(win_len/2, signal.shape[-1] + win_len/2 + 1, win_len - (win_len-hop_len))/float(fs)
     time  -= (win_len/2) / float(fs)
