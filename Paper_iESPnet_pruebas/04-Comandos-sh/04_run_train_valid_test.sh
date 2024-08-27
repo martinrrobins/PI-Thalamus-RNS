@@ -33,3 +33,4 @@ micromamba activate env_thalamus
 cd ${HOME}/PI-Thalamus/01\ Thalamus-PI/Paper_iESPnet_pruebas/05-Train-Test/
 
 srun python3 04_train_val_test_dsf_iespnet.py
+srun python3 04_train_val_test_dsf_iespnet.py
