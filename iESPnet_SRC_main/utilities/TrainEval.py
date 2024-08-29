@@ -146,7 +146,8 @@ def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, trans
     print('Using {} device'.format(device))
 
     # following pytorch suggestion to speed up training
-    torch.backends.cudnn.benchmark = False # reproducibilidad
+    torch.backends.cudnn.benchmark     = False # reproducibilidad
+    torch.backends.cudnn.deterministic = True
 
     kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
     train_loader = DataLoader(train_data, batch_size = hparams["batch_size"], sampler = sampler, **kwargs)
@@ -245,7 +246,8 @@ def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_tra
     print('Using {} device'.format(device))
 
     # following pytorch suggestion to speed up training
-    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.benchmark     = False
+    torch.backends.cudnn.deterministic = True
 
     kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
     train_loader = DataLoader(train_data, batch_size=hparams["batch_size"], sampler=sampler, **kwargs)
