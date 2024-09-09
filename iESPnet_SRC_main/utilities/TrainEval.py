@@ -232,6 +232,9 @@ def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, trans
                 'optimizer_state_dict2': optimizer2.state_dict(),
                }, save_path + '.pth')
     
+    del optimizer1, optimizer2, scheduler1, scheduler2
+    torch.cuda.empty_cache()
+     
     return avg_train_losses, train_accs, avg_valid_losses, valid_accs
 
 def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_train, sampler, save_path):

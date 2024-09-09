@@ -24,8 +24,8 @@ torch.manual_seed(0)
 random.seed(0)
 
 # direccion donde se encuentran los espectrogramas 
-SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
-meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
+SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
+meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
 
 df_meta        = pd.read_csv(meta_data_file)
 
@@ -38,7 +38,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet/'
+save_path          = 'models_DSF_iESPnet_prueba1/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -91,6 +91,9 @@ experiments_2 = ['.1','.2','.3']
 def main():
     for s in range (1): #for s in range (len(experiments_1)):
         for j in range(len(experiments_2)):
+            s=0
+            j=0
+
             model1 = DynamicSpatialFilter(
                                           n_channels, 
                                           mlp_input            = mlp_input, 
@@ -208,7 +211,8 @@ def main():
     
             np.save(save_predictions + 'results.npy', predict_)
     
-            del train_data, test_data, vali_data
+            del train_data, test_data, vali_data, model1, model2
+            torch.cuda.empty_cache()
 
 if __name__=='__main__':
     main()
