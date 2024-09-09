@@ -655,8 +655,8 @@ def test_model_v2(model1, model2, hparams, model_path, test_data, experiment_1, 
     device   = torch.device("cuda" if use_cuda else "cpu")
     print('Using {} device'.format(device))
 
-    # following pytorch suggestion
-    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.benchmark     = False # reproducibilidad
+    torch.backends.cudnn.deterministic = True
 
     kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
     

@@ -38,7 +38,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet_prueba2/'
+save_path          = 'models_DSF_iESPnet_prueba1/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -83,13 +83,44 @@ for s in range(len(vali_id)):
     vali_df.reset_index(drop=True, inplace=True)
     train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
 
+# Dataloaders creados
+train_data = SeizureDatasetLabelTimev2(
+                                       file             = train_df,
+                                       root_dir         = SPE_DIR,
+                                       transform        = None, 
+                                       target_transform = smoothing_label(),
+                                      )
+
+# testing data should be balanced, just be "as it is"
+test_data  = SeizureDatasetLabelTimev2(
+                                       file             = test_df,
+                                       root_dir         = SPE_DIR,
+                                       transform        = None,
+                                       target_transform = smoothing_label()  
+                                      )
+
+# validation data should be balanced, just be "as it is"
+vali_data  = SeizureDatasetLabelTimev2(
+                                       file             = vali_df,
+                                       root_dir         = SPE_DIR,
+                                       transform        = None,
+                                       target_transform = smoothing_label()  
+                                      )
+
+# data augmentation 
+transform_train = transforms.Compose([
+                                      T.FrequencyMasking(FREQ_MASK_PARAM),
+                                      T.TimeMasking(TIME_MASK_PARAN), 
+                                      permute_spec()                                                                     
+                                    ])
+
 # experimentos que se van a realizar
 experiments_1 = ['exp1','exp2','exp3']
 experiments_2 = ['.1','.2','.3']
 
 
 def main():
-    for s in range (1,2): #for s in range (len(experiments_1)):
+    for s in range (1): #for s in range (len(experiments_1)):
         for j in range(len(experiments_2)):
             s=0
             j=0
@@ -131,38 +162,7 @@ def main():
                 os.makedirs(save_figs)
             
             print('Running training for: ' + experiments_1[s] +  experiments_2[j])
-    
-            # Dataloaders creados
-            train_data = SeizureDatasetLabelTimev2(
-                                                   file             = train_df,
-                                                   root_dir         = SPE_DIR,
-                                                   transform        = None, 
-                                                   target_transform = smoothing_label(),
-                                                  )
-            
-            # testing data should be balanced, just be "as it is"
-            test_data  = SeizureDatasetLabelTimev2(
-                                                   file             = test_df,
-                                                   root_dir         = SPE_DIR,
-                                                   transform        = None,
-                                                   target_transform = smoothing_label()  
-                                                  )
-            
-            # validation data should be balanced, just be "as it is"
-            vali_data  = SeizureDatasetLabelTimev2(
-                                                   file             = vali_df,
-                                                   root_dir         = SPE_DIR,
-                                                   transform        = None,
-                                                   target_transform = smoothing_label()  
-                                                  )
-            
-            # data augmentation 
-            transform_train = transforms.Compose([
-                                                  T.FrequencyMasking(FREQ_MASK_PARAM),
-                                                  T.TimeMasking(TIME_MASK_PARAN), 
-                                                  permute_spec()                                                                     
-                                                ])
-            
+             
             weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=1)
             sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
     
@@ -210,17 +210,8 @@ def main():
                        }
     
             np.save(save_predictions + 'results.npy', predict_)
-
-            for name, module in model1.named_children():
-                print('resetting ', name)
-                module.reset_parameters()
-            
-            for name, module in model2.named_children():
-                print('resetting ', name)
-                module.reset_parameters()
-
     
-            del train_data, test_data, vali_data
+            del model1, model2
             torch.cuda.empty_cache()
 
 if __name__=='__main__':
