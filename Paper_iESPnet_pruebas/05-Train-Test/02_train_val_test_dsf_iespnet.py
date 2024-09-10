@@ -2,6 +2,7 @@ import sys
 import os
 import torch
 import random
+import gc
 
 import torchaudio.transforms    as T
 import torch.optim              as optim
@@ -38,7 +39,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet_prueba1/'
+save_path          = 'models_DSF_iESPnet_prueba2/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -82,37 +83,6 @@ for s in range(len(vali_id)):
     vali_df=pd.concat([vali_df, df_meta[df_meta['rns_id'] == vali_id[s]]])
     vali_df.reset_index(drop=True, inplace=True)
     train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
-
-# Dataloaders creados
-train_data = SeizureDatasetLabelTimev2(
-                                       file             = train_df,
-                                       root_dir         = SPE_DIR,
-                                       transform        = None, 
-                                       target_transform = smoothing_label(),
-                                      )
-
-# testing data should be balanced, just be "as it is"
-test_data  = SeizureDatasetLabelTimev2(
-                                       file             = test_df,
-                                       root_dir         = SPE_DIR,
-                                       transform        = None,
-                                       target_transform = smoothing_label()  
-                                      )
-
-# validation data should be balanced, just be "as it is"
-vali_data  = SeizureDatasetLabelTimev2(
-                                       file             = vali_df,
-                                       root_dir         = SPE_DIR,
-                                       transform        = None,
-                                       target_transform = smoothing_label()  
-                                      )
-
-# data augmentation 
-transform_train = transforms.Compose([
-                                      T.FrequencyMasking(FREQ_MASK_PARAM),
-                                      T.TimeMasking(TIME_MASK_PARAN), 
-                                      permute_spec()                                                                     
-                                    ])
 
 # experimentos que se van a realizar
 experiments_1 = ['exp1','exp2','exp3']
@@ -162,7 +132,38 @@ def main():
                 os.makedirs(save_figs)
             
             print('Running training for: ' + experiments_1[s] +  experiments_2[j])
-             
+    
+            # Dataloaders creados
+            train_data = SeizureDatasetLabelTimev2(
+                                                   file             = train_df,
+                                                   root_dir         = SPE_DIR,
+                                                   transform        = None, 
+                                                   target_transform = smoothing_label(),
+                                                  )
+            
+            # testing data should be balanced, just be "as it is"
+            test_data  = SeizureDatasetLabelTimev2(
+                                                   file             = test_df,
+                                                   root_dir         = SPE_DIR,
+                                                   transform        = None,
+                                                   target_transform = smoothing_label()  
+                                                  )
+            
+            # validation data should be balanced, just be "as it is"
+            vali_data  = SeizureDatasetLabelTimev2(
+                                                   file             = vali_df,
+                                                   root_dir         = SPE_DIR,
+                                                   transform        = None,
+                                                   target_transform = smoothing_label()  
+                                                  )
+            
+            # data augmentation 
+            transform_train = transforms.Compose([
+                                                  T.FrequencyMasking(FREQ_MASK_PARAM),
+                                                  T.TimeMasking(TIME_MASK_PARAN), 
+                                                  permute_spec()                                                                     
+                                                ])
+            
             weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=1)
             sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
     
@@ -211,8 +212,37 @@ def main():
     
             np.save(save_predictions + 'results.npy', predict_)
     
-            del model1, model2
+            del train_data, test_data, vali_data, model1, model2
             torch.cuda.empty_cache()
+
+            # Recolectar basura
+            gc.collect()
+
+            # Listar y eliminar tensores de PyTorch
+            tensor_names = [name for name, obj in globals().items() if isinstance(obj, torch.Tensor) and obj.is_cuda]
+            for name in tensor_names:
+                obj = globals()[name]
+                print(f'Deleting tensor: {name}, Size: {obj.size()}')
+                del obj
+                torch.cuda.empty_cache()
+
+            # Listar y eliminar modelos de PyTorch
+            model_names = [name for name, obj in globals().items() if isinstance(obj, torch.nn.Module)]
+            for name in model_names:
+                obj = globals()[name]
+                print(f'Deleting model: {name}')
+                del obj
+                torch.cuda.empty_cache()
+
+            # Listar y eliminar optimizadores de PyTorch
+            optimizer_names = [name for name, obj in globals().items() if isinstance(obj, torch.optim.Optimizer)]
+            for name in optimizer_names:
+                obj = globals()[name]
+                print(f'Deleting optimizer: {name}')
+                del obj
+                torch.cuda.empty_cache()
+
+
 
 if __name__=='__main__':
     main()
