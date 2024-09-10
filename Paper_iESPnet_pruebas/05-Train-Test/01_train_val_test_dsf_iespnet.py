@@ -68,21 +68,6 @@ hparams = {
 test_id  = ['PIT-RNS1090', 'PIT-RNS8973', 'PIT-RNS1438', 'PIT-RNS8326', 'PIT-RNS3016']
 vali_id  = ['PIT-RNS1603', 'PIT-RNS1556', 'PIT-RNS1534', 'PIT-RNS6989', 'PIT-RNS2543', 'PIT-RNS7168', 'PIT-RNS6762']
 
-
-train_df = df_meta.copy()
-test_df  = pd.DataFrame()
-vali_df  = pd.DataFrame()
-
-for s in range (len(test_id)):
-    test_df = pd.concat([test_df, df_meta[df_meta['rns_id'] == test_id[s]]])
-    test_df.reset_index(drop=True, inplace=True)
-    train_df.drop(train_df[train_df['rns_id'] == test_id[s]].index, inplace = True)
-
-for s in range(len(vali_id)):
-    vali_df=pd.concat([vali_df, df_meta[df_meta['rns_id'] == vali_id[s]]])
-    vali_df.reset_index(drop=True, inplace=True)
-    train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
-
 # experimentos que se van a realizar
 experiments_1 = ['exp1','exp2','exp3']
 experiments_2 = ['.1','.2','.3']
@@ -131,6 +116,20 @@ def main():
                 os.makedirs(save_figs)
             
             print('Running training for: ' + experiments_1[s] +  experiments_2[j])
+
+            train_df = df_meta.copy()
+            test_df  = pd.DataFrame()
+            vali_df  = pd.DataFrame()
+
+            for i in range (len(test_id)):
+                test_df = pd.concat([test_df, df_meta[df_meta['rns_id'] == test_id[i]]])
+                test_df.reset_index(drop=True, inplace=True)
+                train_df.drop(train_df[train_df['rns_id'] == test_id[i]].index, inplace = True)
+
+            for i in range(len(vali_id)):
+                vali_df=pd.concat([vali_df, df_meta[df_meta['rns_id'] == vali_id[i]]])
+                vali_df.reset_index(drop=True, inplace=True)
+                train_df.drop(train_df[train_df['rns_id'] == vali_id[i]].index, inplace = True)
     
             # Dataloaders creados
             train_data = SeizureDatasetLabelTimev2(

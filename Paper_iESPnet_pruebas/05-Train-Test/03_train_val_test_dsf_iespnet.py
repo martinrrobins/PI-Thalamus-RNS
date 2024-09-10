@@ -2,6 +2,7 @@ import sys
 import os
 import torch
 import random
+import gc
 
 import torchaudio.transforms    as T
 import torch.optim              as optim
@@ -14,7 +15,7 @@ from utilit_train_test import make_weights_for_balanced_classes
 sys.path.append(os.path.abspath(os.path.join('..','..','iESPnet_SRC_main','utilities')))
 from Generator         import SeizureDatasetLabelTimev2, permute_spec, smoothing_label
 from Model             import iESPnet
-from TrainEval         import train_model_v2, test_model_v2, get_performance_indices
+from TrainEval_v2         import train_model_v2, test_model_v2, get_performance_indices
 
 sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filtering')))
 from models            import DynamicSpatialFilter
@@ -38,7 +39,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet/'
+save_path          = 'models_DSF_iESPnet_prueba2/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -89,10 +90,11 @@ experiments_2 = ['.1','.2','.3']
 
 
 def main():
-    for s in range (2,3): #for s in range (len(experiments_1)):
+    for s in range (1): #for s in range (len(experiments_1)):
         for j in range(len(experiments_2)):
-            s='exp3'
-            j='.2'
+            s=0
+            j=0
+
             model1 = DynamicSpatialFilter(
                                           n_channels, 
                                           mlp_input            = mlp_input, 
@@ -210,8 +212,9 @@ def main():
     
             np.save(save_predictions + 'results.npy', predict_)
     
-            del train_data, test_data, vali_data
-
+            del train_data, test_data, vali_data, model1, model2
+            torch.cuda.empty_cache()
+            
 if __name__=='__main__':
     main()
     

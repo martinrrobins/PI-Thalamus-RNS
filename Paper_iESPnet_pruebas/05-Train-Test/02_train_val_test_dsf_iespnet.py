@@ -20,10 +20,6 @@ from TrainEval         import train_model_v2, test_model_v2, get_performance_ind
 sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filtering')))
 from models            import DynamicSpatialFilter
 
-# set the seed for reproducibility
-torch.manual_seed(0)
-random.seed(0)
-
 # direccion donde se encuentran los espectrogramas 
 SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
 meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
@@ -92,6 +88,11 @@ experiments_2 = ['.1','.2','.3']
 def main():
     for s in range (1): #for s in range (len(experiments_1)):
         for j in range(len(experiments_2)):
+
+            # set the seed for reproducibility
+            torch.manual_seed(0)
+            random.seed(0)
+
             s=0
             j=0
 
@@ -214,36 +215,7 @@ def main():
     
             del train_data, test_data, vali_data, model1, model2
             torch.cuda.empty_cache()
-
-            # Recolectar basura
-            gc.collect()
-
-            # Listar y eliminar tensores de PyTorch
-            tensor_names = [name for name, obj in globals().items() if isinstance(obj, torch.Tensor) and obj.is_cuda]
-            for name in tensor_names:
-                obj = globals()[name]
-                print(f'Deleting tensor: {name}, Size: {obj.size()}')
-                del obj
-                torch.cuda.empty_cache()
-
-            # Listar y eliminar modelos de PyTorch
-            model_names = [name for name, obj in globals().items() if isinstance(obj, torch.nn.Module)]
-            for name in model_names:
-                obj = globals()[name]
-                print(f'Deleting model: {name}')
-                del obj
-                torch.cuda.empty_cache()
-
-            # Listar y eliminar optimizadores de PyTorch
-            optimizer_names = [name for name, obj in globals().items() if isinstance(obj, torch.optim.Optimizer)]
-            for name in optimizer_names:
-                obj = globals()[name]
-                print(f'Deleting optimizer: {name}')
-                del obj
-                torch.cuda.empty_cache()
-
-
-
+            
 if __name__=='__main__':
     main()
     
