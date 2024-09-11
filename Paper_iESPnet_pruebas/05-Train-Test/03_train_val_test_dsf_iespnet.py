@@ -15,14 +15,10 @@ from utilit_train_test import make_weights_for_balanced_classes
 sys.path.append(os.path.abspath(os.path.join('..','..','iESPnet_SRC_main','utilities')))
 from Generator         import SeizureDatasetLabelTimev2, permute_spec, smoothing_label
 from Model             import iESPnet
-from TrainEval_v2         import train_model_v2, test_model_v2, get_performance_indices
+from TrainEval         import train_model_v2, test_model_v2, get_performance_indices
 
 sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filtering')))
 from models            import DynamicSpatialFilter
-
-# set the seed for reproducibility
-torch.manual_seed(0)
-random.seed(0)
 
 # direccion donde se encuentran los espectrogramas 
 SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
@@ -39,7 +35,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet_prueba2/'
+save_path          = 'models_DSF_iESPnet/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -90,10 +86,12 @@ experiments_2 = ['.1','.2','.3']
 
 
 def main():
-    for s in range (1): #for s in range (len(experiments_1)):
+    for s in range (2,3): 
         for j in range(len(experiments_2)):
-            s=0
-            j=0
+
+            # set the seed for reproducibility
+            torch.manual_seed(0)
+            random.seed(0)
 
             model1 = DynamicSpatialFilter(
                                           n_channels, 
@@ -217,4 +215,3 @@ def main():
             
 if __name__=='__main__':
     main()
-    

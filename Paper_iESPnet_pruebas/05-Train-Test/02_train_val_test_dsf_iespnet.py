@@ -35,7 +35,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet_prueba2/'
+save_path          = 'models_DSF_iESPnet/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -86,15 +86,12 @@ experiments_2 = ['.1','.2','.3']
 
 
 def main():
-    for s in range (1): #for s in range (len(experiments_1)):
+    for s in range (1,2): #for s in range (len(experiments_1)):
         for j in range(len(experiments_2)):
 
             # set the seed for reproducibility
             torch.manual_seed(0)
             random.seed(0)
-
-            s=0
-            j=0
 
             model1 = DynamicSpatialFilter(
                                           n_channels, 

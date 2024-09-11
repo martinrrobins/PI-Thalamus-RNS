@@ -2,6 +2,7 @@ import sys
 import os
 import torch
 import random
+import gc
 
 import torchaudio.transforms    as T
 import torch.optim              as optim
@@ -19,13 +20,9 @@ from TrainEval         import train_model_v2, test_model_v2, get_performance_ind
 sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filtering')))
 from models            import DynamicSpatialFilter
 
-# set the seed for reproducibility
-torch.manual_seed(0)
-random.seed(0)
-
 # direccion donde se encuentran los espectrogramas 
-SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
-meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG_PROCESS/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
+SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
+meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
 
 df_meta        = pd.read_csv(meta_data_file)
 
@@ -89,8 +86,16 @@ experiments_2 = ['.1','.2','.3']
 
 
 def main():
-    for s in range (1): #for s in range (len(experiments_1)):
-        for j in range(1):
+    for s in range (2,3): 
+        for j in range(len(experiments_2)):
+
+            s=2
+            j=1
+
+            # set the seed for reproducibility
+            torch.manual_seed(0)
+            random.seed(0)
+
             model1 = DynamicSpatialFilter(
                                           n_channels, 
                                           mlp_input            = mlp_input, 
@@ -208,8 +213,8 @@ def main():
     
             np.save(save_predictions + 'results.npy', predict_)
     
-            del train_data, test_data, vali_data
-
+            del train_data, test_data, vali_data, model1, model2
+            torch.cuda.empty_cache()
+            
 if __name__=='__main__':
     main()
-    
