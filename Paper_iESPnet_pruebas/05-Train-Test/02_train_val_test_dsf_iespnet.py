@@ -21,8 +21,8 @@ sys.path.append(os.path.abspath(os.path.join('../../..','02 Dynamic-Spatial-Filt
 from models            import DynamicSpatialFilter
 
 # direccion donde se encuentran los espectrogramas 
-SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
-meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
+SPE_DIR        = '/home/mrobins/Rns_Data/PITT_PI_EEG_normc/'                                #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/'
+meta_data_file = '/home/mrobins/Rns_Data/PITT_PI_EEG_normc/METADATA/allfiles_metadata.csv'  #'/media/martin/Disco2/Rns_Data/PITT_PI_EEG/METADATA/allfiles_metadata.csv'
 
 df_meta        = pd.read_csv(meta_data_file)
 
@@ -35,7 +35,7 @@ batch_size         = 64    #128
 epochs             = 20
 num_workers        = 4
 
-save_path          = 'models_DSF_iESPnet/'
+save_path          = 'dsf_iespnet_normc/'
 patients           = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
