@@ -130,6 +130,89 @@ def train_model_opt(model, hparams, epochs, train_data, sampler, save_path):
             }, save_path + '_opt.pth') 
     return avg_train_losses, avg_train_accs
 
+def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_train, sampler, save_path):
+    # train model until the indicated number of epochs
+    # to track the average training loss per epoch as the model trains
+    avg_train_losses = []
+    avg_train_accs   = []
+  
+    
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print('Using {} device'.format(device))
+
+    # following pytorch suggestion to speed up training
+    torch.backends.cudnn.benchmark     = False
+    torch.backends.cudnn.deterministic = True
+
+    kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
+    train_loader = DataLoader(train_data, batch_size=hparams["batch_size"], sampler=sampler, **kwargs)
+    
+    #move model1 to device
+    model1.to(device)
+
+    #move model2 to device
+    model2.to(device)
+
+    print('Num Model Parameters', sum([param1.nelement() for param1 in model1.parameters()]))
+    print('Num Model Parameters', sum([param2.nelement() for param2 in model2.parameters()]))
+
+    # para dsf: weight_decay       = 0.001
+    # para dsf: lr                 = 0.0004
+
+    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate'], weight_decay=1e-4)
+    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate'], weight_decay=1e-4)
+
+    scheduler1 = optim.lr_scheduler.OneCycleLR(
+                                               optimizer1, 
+                                               max_lr          = hparams['learning_rate'],  
+                                               steps_per_epoch = int(len(train_loader)),
+                                               epochs          = hparams['epochs'],
+                                               anneal_strategy = 'linear'
+                                              )
+    scheduler2 = optim.lr_scheduler.OneCycleLR(
+                                               optimizer2, 
+                                               max_lr          = hparams['learning_rate'], 
+                                               steps_per_epoch = int(len(train_loader)*2),
+                                               epochs          = hparams['epochs'],
+                                               anneal_strategy = 'linear'
+                                              )
+          
+    criterion = nn.BCEWithLogitsLoss().to(device)
+ 
+    for epoch in range(1, epochs + 1):
+        train_losses, train_aucpr = training_DSF_iESPnet(
+                                                         model1, 
+                                                         model2, 
+                                                         device, 
+                                                         train_loader, 
+                                                         transform_train, 
+                                                         criterion, 
+                                                         optimizer1, 
+                                                         optimizer2, 
+                                                         scheduler1, 
+                                                         scheduler2, 
+                                                         epoch
+                                                        )
+        
+        train_loss = np.average(train_losses)
+
+        avg_train_losses.append(train_loss)
+        
+        avg_train_accs.append(train_aucpr)
+
+    print('saving the model')
+
+    torch.save({
+                'epoch': 1,
+                'model_state_dict1': model1.state_dict(),
+                'model_state_dict2': model2.state_dict(),
+                'optimizer_state_dict1': optimizer1.state_dict(),
+                'optimizer_state_dict2': optimizer2.state_dict(),
+               }, save_path + '_opt.pth')
+    
+    return avg_train_losses, avg_train_accs
+
 def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path, experiment_1, experiment_2):
     # train model until the indicated number of epochs
     # to track the average training loss per epoch as the model trains
@@ -237,11 +320,15 @@ def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, trans
      
     return avg_train_losses, train_accs, avg_valid_losses, valid_accs
 
-def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_train, sampler, save_path):
-    # train model until the indicated number of epochs
+def train_model_iespnet(model, hparams, epochs, train_data, vali_data, sampler, save_path):
+    # train model until the indicated number of epochs -- iespnet
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
-    avg_train_accs   = []
+    train_accs       = []
+
+    # to track the average validation loss per epoch as the model trains
+    avg_valid_losses = [] 
+    valid_accs       = []
   
     
     use_cuda = torch.cuda.is_available()
@@ -249,77 +336,70 @@ def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_tra
     print('Using {} device'.format(device))
 
     # following pytorch suggestion to speed up training
-    torch.backends.cudnn.benchmark     = False
+    torch.backends.cudnn.benchmark     = False # reproducibilidad
     torch.backends.cudnn.deterministic = True
 
     kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
-    train_loader = DataLoader(train_data, batch_size=hparams["batch_size"], sampler=sampler, **kwargs)
+    train_loader = DataLoader(train_data, batch_size = hparams["batch_size"], sampler = sampler, **kwargs)
+    valid_loader = DataLoader(vali_data, batch_size = hparams["batch_size"], shuffle = False, **kwargs)
     
-    #move model1 to device
-    model1.to(device)
+    #move model to device
+    model.to(device)
 
-    #move model2 to device
-    model2.to(device)
+    print('Num Model Parameters', sum([param.nelement() for param in model.parameters()]))
 
-    print('Num Model Parameters', sum([param1.nelement() for param1 in model1.parameters()]))
-    print('Num Model Parameters', sum([param2.nelement() for param2 in model2.parameters()]))
+    optimizer = optim.AdamW(model.parameters(), hparams['learning_rate'], weight_decay=1e-4)
 
-    # para dsf: weight_decay       = 0.001
-    # para dsf: lr                 = 0.0004
-
-    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate'], weight_decay=1e-4)
-    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate'], weight_decay=1e-4)
-
-    scheduler1 = optim.lr_scheduler.OneCycleLR(
-                                               optimizer1, 
-                                               max_lr          = hparams['learning_rate'],  
-                                               steps_per_epoch = int(len(train_loader)),
-                                               epochs          = hparams['epochs'],
-                                               anneal_strategy = 'linear'
-                                              )
-    scheduler2 = optim.lr_scheduler.OneCycleLR(
-                                               optimizer2, 
-                                               max_lr          = hparams['learning_rate'], 
-                                               steps_per_epoch = int(len(train_loader)*2),
-                                               epochs          = hparams['epochs'],
-                                               anneal_strategy = 'linear'
-                                              )
+    scheduler = optim.lr_scheduler.OneCycleLR(
+                                              optimizer, 
+                                              max_lr          = hparams['learning_rate'], 
+                                              steps_per_epoch = int(len(train_loader)),
+                                              epochs          = hparams['epochs'],
+                                              anneal_strategy = 'linear'
+                                             )
           
     criterion = nn.BCEWithLogitsLoss().to(device)
  
     for epoch in range(1, epochs + 1):
-        train_losses, train_aucpr = training_DSF_iESPnet(
-                                                         model1, 
-                                                         model2, 
-                                                         device, 
-                                                         train_loader, 
-                                                         transform_train, 
-                                                         criterion, 
-                                                         optimizer1, 
-                                                         optimizer2, 
-                                                         scheduler1, 
-                                                         scheduler2, 
-                                                         epoch
-                                                        )
+        train_losses, train_aucpr = training_iespnet(
+                                                     model,                                                          
+                                                     device, 
+                                                     train_loader,                                                      
+                                                     criterion, 
+                                                     optimizer,  
+                                                     scheduler, 
+                                                     epoch                                                     
+                                                    )
+        
+        valid_losses, valid_aucpr = validate_iespnet(
+                                                     model,                                                
+                                                     device, 
+                                                     valid_loader, 
+                                                     criterion, 
+                                                     epoch                                                                                                   
+                                                    )
         
         train_loss = np.average(train_losses)
+        valid_loss = np.average(valid_losses)
 
         avg_train_losses.append(train_loss)
+        avg_valid_losses.append(valid_loss)
         
-        avg_train_accs.append(train_aucpr)
+        train_accs.append(train_aucpr)
+        valid_accs.append(valid_aucpr)
 
     print('saving the model')
 
     torch.save({
-                'epoch': 1,
-                'model_state_dict1': model1.state_dict(),
-                'model_state_dict2': model2.state_dict(),
-                'optimizer_state_dict1': optimizer1.state_dict(),
-                'optimizer_state_dict2': optimizer2.state_dict(),
-               }, save_path + '_opt.pth')
-    
-    return avg_train_losses, avg_train_accs
+                'epoch': epoch,
+                'model_state_dict'    : model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+               }, save_path + '.pth')
 
+    del optimizer, scheduler
+    torch.cuda.empty_cache()
+    
+    return avg_train_losses, train_accs, avg_valid_losses, valid_accs
 
 def training(model, device, train_loader, criterion, optimizer, scheduler, epoch, figure_path=[]):
     data_len = len(train_loader.dataset)
@@ -503,6 +583,71 @@ def training_DSF_iESPnet(model1, model2 ,device, train_loader, transform_train, 
         
     print('Train Epoch: {} \tTrainLoss: {:.6f} \tTrainAUCpr: {:.6f}'.format(epoch, np.mean(train_losses), train_aucpr))
     return train_losses, train_aucpr
+
+def training_iespnet(model ,device, train_loader, criterion, optimizer, scheduler, epoch):  
+    train_loss   = 0.0
+    train_losses = []
+
+    # precision = Precision(average=False, device=device)
+    # recall    = Recall(average=False, device=device)
+
+    cont = 0
+    model.train()
+
+    for batch_idx, _data in enumerate(train_loader):
+        cont+=1
+        
+        spectrograms, labels = _data 
+        spectrograms, labels = spectrograms.to(device), labels.to(device)
+
+        # Zero the gradients
+        optimizer.zero_grad(set_to_none=True)
+
+        # Perform forward pass
+        outputs = model(spectrograms)
+        
+        m       = nn.Sigmoid()
+        probs   = m(outputs)
+        
+        y_true  = torch.max(labels, dim =1)[0]
+        y_pred  = torch.max(probs, dim=1)[0]
+        
+        if cont == 1:
+            Y_true = y_true
+            Y_pred = y_pred
+
+        else:                
+            Y_true = torch.cat((Y_true, y_true), axis=0)
+            Y_pred = torch.cat((Y_pred, y_pred), axis=0)
+
+        # Compute loss
+        loss = criterion(outputs, labels)
+
+        # Perform backward pass
+        loss.backward()
+        train_loss += loss.item()
+
+        # Perform optimization
+        optimizer.step()
+        scheduler.step()
+        
+        # record training loss
+        train_losses.append(loss.item())
+    
+        del _data
+        torch.cuda.empty_cache()
+
+    y_val_true, val_pred = Y_true.to('cpu').detach().numpy(), Y_pred.to('cpu').detach().numpy()
+
+    if np.isnan(val_pred).any():
+        print('nan found in pred')
+        train_aucpr = 0
+    else:   
+        train_aucpr = average_precision_score(y_val_true,val_pred)
+
+    print('Train Epoch: {} \tTrainLoss: {:.6f} \tTrainAUCpr: {:.6f}'.format(epoch, np.mean(train_losses), train_aucpr))
+  
+    return train_losses, train_aucpr
     
 
 def validate(model, device, val_loader, criterion, epoch, figure_path):
@@ -628,6 +773,49 @@ def validate_v2(model1, model2, device, val_loader, criterion, epoch, experiment
    
     return valid_losses, valid_aucpr
 
+def validate_iespnet(model, device, val_loader, criterion, epoch):
+    valid_losses = []
+
+    cont = 0
+    model.eval()
+    with torch.no_grad():
+        for spectrograms, labels in val_loader:
+            cont+=1
+            
+            spectrograms, labels = spectrograms.to(device), labels.to(device)
+
+            outputs = model(spectrograms)
+
+            m     = nn.Sigmoid()
+            probs = m(outputs)
+            
+            if len(probs.shape) == 1:
+                probs.unsqueeze_(0)
+                outputs.unsqueeze_(0)
+            
+            y_true  = torch.max(labels, dim =1)[0]
+            y_pred  = torch.max(probs, dim=1)[0]
+            
+            if cont == 1:
+                Y_true = y_true
+                Y_pred = y_pred
+
+            else:                
+                Y_true = torch.cat((Y_true, y_true), axis=0)
+                Y_pred = torch.cat((Y_pred, y_pred), axis=0)
+            
+            loss = criterion(outputs, labels)
+            valid_losses.append(loss.item())
+            
+            del spectrograms, loss
+            torch.cuda.empty_cache()           
+        
+    valid_aucpr = average_precision_score(Y_true.to('cpu').detach().numpy(), Y_pred.to('cpu').detach().numpy())
+    
+    print('Train Epoch: {} \tValLoss:  {:.6f} \tValAUCpr: {:.6f}'.format(epoch, np.mean(valid_losses), valid_aucpr))
+   
+    return valid_losses, valid_aucpr
+
 def test_model(model, hparams, model_path, test_data):
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -668,6 +856,27 @@ def test_model_v2(model1, model2, hparams, model_path, test_data, experiment_1, 
   
     test_loader = DataLoader(test_data, batch_size=hparams['batch_size'], shuffle=False,**kwargs)
     outputs     = get_prediction_v2(model1, model2, device, test_loader, experiment_1, experiment_2)
+    # Process is completed.
+    print('Testing process has finished.')
+    return outputs
+
+def test_model_iespnet(model, hparams, model_path, test_data):
+    use_cuda = torch.cuda.is_available()
+    device   = torch.device("cuda" if use_cuda else "cpu")
+    print('Using {} device'.format(device))
+
+    # following pytorch suggestion
+    torch.backends.cudnn.benchmark = True
+
+    kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
+    
+    # load model
+    checkpoint = torch.load(model_path)
+
+    model.load_state_dict(checkpoint['model_state_dict'])
+  
+    test_loader = DataLoader(test_data, batch_size=hparams['batch_size'], shuffle=False,**kwargs)
+    outputs     = get_prediction_iespnet(model, device, test_loader)
     # Process is completed.
     print('Testing process has finished.')
     return outputs
@@ -888,6 +1097,55 @@ def get_prediction_v2(model1, model2, device, loader, experiment_1, experiment_2
                 'l_true': l_true
                }
     
+    return prediction
+
+def get_prediction_iespnet(model, device, loader):
+    model.to(device)
+    model.eval()
+
+    with torch.no_grad():
+        for i, data_ in enumerate(loader):
+            spectrograms, labels = data_
+            
+            spectrograms, labels = spectrograms.to(device), labels.to(device)
+
+            outputs = model(spectrograms)
+            
+            m     = nn.Sigmoid()
+            probs = m(outputs)
+
+            if len(probs.shape) == 1:
+                probs.unsqueeze_(0)
+                outputs.unsqueeze_(0)
+            if i==0:
+                y_true    = labels
+                y_probs   = probs
+                y_outputs = outputs
+
+            else:                
+                y_true    = torch.cat((y_true, labels), axis=0)
+                y_probs   = torch.cat((y_probs, probs), axis=0)
+                y_outputs = torch.cat((y_outputs, outputs), axis=0)
+
+    
+    y_true    = y_true.to('cpu').detach().numpy()
+    y_probs   = y_probs.to('cpu').detach().numpy()
+    y_outputs = y_outputs.to('cpu').detach().numpy()
+    
+    l_true    = np.zeros((len(y_true,)))
+    idx_true  = np.where(np.sum(y_true, axis=1)>0.0)[0].tolist()
+
+    l_true[idx_true] = 1    
+    t_true           = np.argmax(y_true[idx_true], axis=1)
+        
+    
+    prediction={
+                'y_true': y_true,
+                'y_prob': y_probs, 
+                'y_output': y_outputs,
+                't_true': t_true,
+                'l_true': l_true
+               }
     return prediction
 
 def get_thr(rang, y_true, y_probs):
