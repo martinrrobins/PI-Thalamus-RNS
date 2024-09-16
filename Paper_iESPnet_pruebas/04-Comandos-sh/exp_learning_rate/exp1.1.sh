@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=exp_01.04 # short name for your job
+#SBATCH --job-name=exp1.1 # short name for your job
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=martin.robins@mi.unc.edu.ar
 #SBATCH --output=slurm-%x.%j.out # %j job id, ½x job name
@@ -9,7 +9,7 @@
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=10       # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --time=1-10:00           # total run time limit (<days>-<hours>:<minutes>)
+#SBATCH --time=1-00:00           # total run time limit (<days>-<hours>:<minutes>)
 
 . /etc/profile
 module purge
@@ -30,6 +30,6 @@ source ${HOME}/.bashrc
 cd ${HOME}/
 micromamba activate env_thalamus
 
-cd ${HOME}/PI-Thalamus/01\ Thalamus-PI/Paper_iESPnet_pruebas/05-Train-Test/
+cd ${HOME}/PI-Thalamus/01\ Thalamus-PI/Paper_iESPnet_pruebas/05-Train-Test/exp_learning_rate/
 
-srun python3 prueba_reproducibilidad.py
+srun python3 exp1.1.py
