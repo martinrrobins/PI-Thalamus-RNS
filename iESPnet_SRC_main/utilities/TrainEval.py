@@ -130,7 +130,7 @@ def train_model_opt(model, hparams, epochs, train_data, sampler, save_path):
             }, save_path + '_opt.pth') 
     return avg_train_losses, avg_train_accs
 
-def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_train, sampler, save_path):
+def train_model_dsf_iespnet_opt(model1, model2, hparams, epochs, train_data, transform_train, sampler, save_path):
     # train model until the indicated number of epochs
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
@@ -213,7 +213,7 @@ def train_model_optv2(model1, model2, hparams, epochs, train_data, transform_tra
     
     return avg_train_losses, avg_train_accs
 
-def train_model_v2(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path, experiment_1, experiment_2):
+def train_model_dsf_iespnet(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path, experiment_1, experiment_2):
     # train model until the indicated number of epochs
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
@@ -355,8 +355,8 @@ def train_model_dsf_iespnet_abl(model1, model2, hparams, epochs, train_data, val
     # para dsf: weight_decay       = 0.001
     # para dsf: lr                 = 0.0004
 
-    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate_dsf'], weight_decay=1e-4)
-    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate_iespnet'], weight_decay=1e-4)
+    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate_dsf'], weight_decay = hparams['weight_decay_dsf'])
+    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate_iespnet'], weight_decay = hparams['weight_decay_iespnet'])
 
     scheduler1 = optim.lr_scheduler.OneCycleLR(
                                                optimizer1, 
@@ -421,6 +421,199 @@ def train_model_dsf_iespnet_abl(model1, model2, hparams, epochs, train_data, val
     del optimizer1, optimizer2, scheduler1, scheduler2
     torch.cuda.empty_cache()
      
+    return avg_train_losses, train_accs, avg_valid_losses, valid_accs
+
+def train_model_dsf_iespnet_abl_no_sche(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path):
+    # train model until the indicated number of epochs
+    # to track the average training loss per epoch as the model trains
+    avg_train_losses = []
+    train_accs       = []
+
+    # to track the average validation loss per epoch as the model trains
+    avg_valid_losses = [] 
+    valid_accs       = []
+  
+    
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print('Using {} device'.format(device))
+
+    # following pytorch suggestion to speed up training
+    torch.backends.cudnn.benchmark     = False # reproducibilidad
+    torch.backends.cudnn.deterministic = True
+
+    kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
+    train_loader = DataLoader(train_data, batch_size = hparams["batch_size"], sampler = sampler, **kwargs)
+    valid_loader = DataLoader(vali_data, batch_size = hparams["batch_size"], shuffle = False, **kwargs)
+    
+    #move model1 to device
+    model1.to(device)
+
+    #move model2 to device
+    model2.to(device)
+
+    print('Num Model Parameters', sum([param1.nelement() for param1 in model1.parameters()]))
+    print('Num Model Parameters', sum([param2.nelement() for param2 in model2.parameters()]))
+
+    # para dsf: weight_decay       = 0.001
+    # para dsf: lr                 = 0.0004
+
+    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate_dsf'], weight_decay=1e-4)
+    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate_iespnet'], weight_decay=1e-4)
+
+    scheduler2 = optim.lr_scheduler.OneCycleLR(
+                                               optimizer2, 
+                                               max_lr          = hparams['learning_rate_iespnet'], 
+                                               steps_per_epoch = int(len(train_loader)*2),
+                                               epochs          = hparams['epochs'],
+                                               anneal_strategy = 'linear'
+                                              )
+          
+    criterion = nn.BCEWithLogitsLoss().to(device)
+ 
+    for epoch in range(1, epochs + 1):
+        train_losses, train_aucpr = training_dsf_iespnet_abl_no_sche(
+                                                                     model1, 
+                                                                     model2, 
+                                                                     device, 
+                                                                     train_loader, 
+                                                                     transform_train, 
+                                                                     criterion, 
+                                                                     optimizer1, 
+                                                                     optimizer2,                                                             
+                                                                     scheduler2, 
+                                                                     epoch,
+                                                                    )
+        
+        valid_losses, valid_aucpr = validate_abl(
+                                                 model1,
+                                                 model2,
+                                                 device, 
+                                                 valid_loader, 
+                                                 criterion, 
+                                                 epoch
+                                                )
+        
+        train_loss = np.average(train_losses)
+        valid_loss = np.average(valid_losses)
+
+        avg_train_losses.append(train_loss)
+        avg_valid_losses.append(valid_loss)
+        
+        train_accs.append(train_aucpr)
+        valid_accs.append(valid_aucpr)
+
+    print('saving the model')
+
+    torch.save({
+                'epoch': epoch,
+                'model_state_dict1'    : model1.state_dict(),
+                'model_state_dict2'    : model2.state_dict(),
+                'optimizer_state_dict1': optimizer1.state_dict(),
+                'optimizer_state_dict2': optimizer2.state_dict(),
+               }, save_path + '.pth')
+    
+    del optimizer1, optimizer2, scheduler1, scheduler2
+    torch.cuda.empty_cache()
+     
+    return avg_train_losses, train_accs, avg_valid_losses, valid_accs
+
+def train_model_dsf_iespnet_abl_early(model1, model2, hparams, epochs, train_data, vali_data, transform_train, sampler, save_path, patience):
+    # train model until the indicated number of epochs -- dsf + iespnet 
+    # to track the average training loss per epoch as the model trains
+    avg_train_losses = []
+    train_accs       = []
+
+    # to track the average validation loss per epoch as the model trains
+    avg_valid_losses = [] 
+    valid_accs       = []
+
+    # initialize the early_stopping object
+    early_stopping = EarlyStopping(patience = patience, verbose = True, delta=0, path = save_path)
+  
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print('Using {} device'.format(device))
+
+    # following pytorch suggestion to speed up training
+    torch.backends.cudnn.benchmark     = False # reproducibilidad
+    torch.backends.cudnn.deterministic = True
+
+    kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
+    train_loader = DataLoader(train_data, batch_size = hparams["batch_size"], sampler = sampler, **kwargs)
+    valid_loader = DataLoader(vali_data, batch_size = hparams["batch_size"], shuffle = False, **kwargs)
+    
+    #move model1 to device
+    model1.to(device)
+
+    #move model2 to device
+    model2.to(device)
+
+    print('Num Model Parameters', sum([param1.nelement() for param1 in model1.parameters()]))
+    print('Num Model Parameters', sum([param2.nelement() for param2 in model2.parameters()]))
+
+    # para dsf: lr = learning_rate_dsf 
+    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate_dsf'], weight_decay=1e-4)
+    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate_iespnet'], weight_decay=1e-4)
+
+    scheduler1 = optim.lr_scheduler.OneCycleLR(
+                                               optimizer1, 
+                                               max_lr          = hparams['learning_rate_dsf'], 
+                                               steps_per_epoch = int(len(train_loader)),
+                                               epochs          = hparams['epochs'],
+                                               anneal_strategy = 'linear'
+                                              )
+                                              
+    scheduler2 = optim.lr_scheduler.OneCycleLR(
+                                               optimizer2, 
+                                               max_lr          = hparams['learning_rate_iespnet'], 
+                                               steps_per_epoch = int(len(train_loader)*2),
+                                               epochs          = hparams['epochs'],
+                                               anneal_strategy = 'linear'
+                                              )
+          
+    criterion = nn.BCEWithLogitsLoss().to(device)
+ 
+    for epoch in range(1, epochs + 1):
+        train_losses, train_aucpr = training_dsf_iespnet_abl_early(
+                                                                   model1, 
+                                                                   model2, 
+                                                                   device, 
+                                                                   train_loader, 
+                                                                   transform_train, 
+                                                                   criterion, 
+                                                                   optimizer1, 
+                                                                   optimizer2, 
+                                                                   scheduler1, 
+                                                                   scheduler2, 
+                                                                   epoch                                                                   
+                                                                  )
+        
+        valid_losses, valid_aucpr = validate_abl(
+                                                 model1,
+                                                 model2,
+                                                 device, 
+                                                 valid_loader, 
+                                                 criterion, 
+                                                 epoch
+                                                )
+        
+        train_loss = np.average(train_losses)
+        valid_loss = np.average(valid_losses)
+
+        avg_train_losses.append(train_loss)
+        avg_valid_losses.append(valid_loss)
+        
+        train_accs.append(train_aucpr)
+        valid_accs.append(valid_aucpr)
+
+        # early_stopping needs the validation loss to check if it has decresed, and if it has, it will make a checkpoint of the current model
+        early_stopping(epoch, valid_loss, model1, model2, optimizer1, optimizer2)          
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+   
     return avg_train_losses, train_accs, avg_valid_losses, valid_accs
 
 def train_model_iespnet(model, hparams, epochs, train_data, vali_data, sampler, save_path):
@@ -724,6 +917,207 @@ def training_dsf_iespnet_abl(model1, model2 ,device, train_loader, transform_tra
         # Perform forward pass to DSF
         outputs1 = model1(eeg)  # (batch, n_class)
         outputs1 = outputs1.squeeze(1)      
+        outputs1 = (outputs1 - outputs1.mean()) / outputs1.std() # normalizacion global
+        outputs1 = outputs1.to('cpu')
+
+        # create spectrogram from outputs1
+        spectrograms = get_spectrogram_2(outputs1, device, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
+        spectrograms = torch.from_numpy(spectrograms)
+
+        spectrograms_transformed = transform_train(spectrograms) 
+
+        # contact tensors
+        spectrograms2train = torch.cat((spectrograms, spectrograms_transformed), axis=0)
+        spectrograms2train = spectrograms2train.to(device)
+
+        # las labels tb se duplican
+        labels2train       = torch.cat((labels, labels), axis=0)
+
+        # Perform forward pass to iESPnet
+        outputs2 = model2(spectrograms2train)
+
+        m     = nn.Sigmoid()
+        probs = m(outputs2)
+        
+        y_true  = torch.max(labels2train, dim = 1)[0]
+        y_pred  = torch.max(probs, dim = 1)[0]
+        
+        if cont == 1:
+            Y_true = y_true
+            Y_pred = y_pred
+
+        else:                
+            Y_true = torch.cat((Y_true, y_true), axis=0)
+            Y_pred = torch.cat((Y_pred, y_pred), axis=0)
+
+
+        # Compute loss
+        loss = criterion(outputs2, labels2train)
+
+        # Perform backward pass
+        loss.backward()
+        train_loss += loss.item()
+
+        # Perform optimization
+        optimizer1.step()
+        optimizer2.step()
+        scheduler1.step()
+        scheduler2.step()
+        
+        # record training loss
+        train_losses.append(loss.item())
+
+        del _data
+        torch.cuda.empty_cache()
+
+    y_val_true, val_pred = Y_true.to('cpu').detach().numpy(), Y_pred.to('cpu').detach().numpy()
+
+    if np.isnan(val_pred).any():
+        print('nan found in pred')
+        train_aucpr = 0
+    else:   
+        train_aucpr = average_precision_score(y_val_true,val_pred)
+        
+    print('Train Epoch: {} \tTrainLoss: {:.6f} \tTrainAUCpr: {:.6f}'.format(epoch, np.mean(train_losses), train_aucpr))
+    return train_losses, train_aucpr
+
+def training_dsf_iespnet_abl_no_sche(model1, model2 ,device, train_loader, transform_train, criterion, optimizer1, optimizer2, scheduler2, epoch):  
+    # create spectrogram
+    ECOG_SAMPLE_RATE = 250
+    ECOG_CHANNELS    = 4
+    TT               = 1000 # window length
+    SPEC_WIN_LEN     = int(ECOG_SAMPLE_RATE * TT / 1000 ) # win size
+    overlap          = 500 
+    SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) # Length of hop between windows.
+    SPEC_NFFT        = 500  # to see changes in 0.5 reso
+    top_db           = 60.0
+
+    train_loss = 0.0
+
+    # train with early stopping to track the training loss as the model trains
+    train_losses = []
+    # precision = Precision(average=False, device=device)
+    # recall    = Recall(average=False, device=device)
+
+    cont = 0
+
+    model1.train()
+    model2.train()
+
+    #train_loader es un dataloader que devuelve el eeg y el label continuo suavizado, es decir con el smoothing_label
+    for batch_idx, _data in enumerate(train_loader):
+
+        cont+=1
+        eeg, labels = _data 
+        eeg, labels = eeg.to(device), labels.to(device)
+
+        # Zero the gradients
+        optimizer1.zero_grad(set_to_none=True)
+        optimizer2.zero_grad(set_to_none=True)
+
+        # Perform forward pass to DSF
+        outputs1 = model1(eeg)  # (batch, n_class)
+        outputs1 = outputs1.squeeze(1)      
+        outputs1 = (outputs1 - outputs1.mean()) / outputs1.std() # normalizacion global
+        outputs1 = outputs1.to('cpu')
+
+        # create spectrogram from outputs1
+        spectrograms = get_spectrogram_2(outputs1, device, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN, top_db)
+        spectrograms = torch.from_numpy(spectrograms)
+
+        spectrograms_transformed = transform_train(spectrograms) 
+
+        # contact tensors
+        spectrograms2train = torch.cat((spectrograms, spectrograms_transformed), axis=0)
+        spectrograms2train = spectrograms2train.to(device)
+
+        # las labels tb se duplican
+        labels2train       = torch.cat((labels, labels), axis=0)
+
+        # Perform forward pass to iESPnet
+        outputs2 = model2(spectrograms2train)
+
+        m     = nn.Sigmoid()
+        probs = m(outputs2)
+        
+        y_true  = torch.max(labels2train, dim = 1)[0]
+        y_pred  = torch.max(probs, dim = 1)[0]
+        
+        if cont == 1:
+            Y_true = y_true
+            Y_pred = y_pred
+
+        else:                
+            Y_true = torch.cat((Y_true, y_true), axis=0)
+            Y_pred = torch.cat((Y_pred, y_pred), axis=0)
+
+
+        # Compute loss
+        loss = criterion(outputs2, labels2train)
+
+        # Perform backward pass
+        loss.backward()
+        train_loss += loss.item()
+
+        # Perform optimization
+        optimizer1.step()
+        optimizer2.step()
+        scheduler2.step()
+        
+        # record training loss
+        train_losses.append(loss.item())
+
+        del _data
+        torch.cuda.empty_cache()
+
+    y_val_true, val_pred = Y_true.to('cpu').detach().numpy(), Y_pred.to('cpu').detach().numpy()
+
+    if np.isnan(val_pred).any():
+        print('nan found in pred')
+        train_aucpr = 0
+    else:   
+        train_aucpr = average_precision_score(y_val_true,val_pred)
+        
+    print('Train Epoch: {} \tTrainLoss: {:.6f} \tTrainAUCpr: {:.6f}'.format(epoch, np.mean(train_losses), train_aucpr))
+    return train_losses, train_aucpr
+
+def training_dsf_iespnet_abl_early(model1, model2 ,device, train_loader, transform_train, criterion, optimizer1, optimizer2, scheduler1, scheduler2, epoch):  
+    # create spectrogram
+    ECOG_SAMPLE_RATE = 250
+    ECOG_CHANNELS    = 4
+    TT               = 1000 # window length
+    SPEC_WIN_LEN     = int(ECOG_SAMPLE_RATE * TT / 1000 ) # win size
+    overlap          = 500 
+    SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) # Length of hop between windows.
+    SPEC_NFFT        = 500  # to see changes in 0.5 reso
+    top_db           = 60.0
+
+    train_loss = 0.0
+
+    # train with early stopping to track the training loss as the model trains
+    train_losses = []
+    # precision = Precision(average=False, device=device)
+    # recall    = Recall(average=False, device=device)
+
+    cont = 0
+
+    model1.train()
+    model2.train()
+
+    #train_loader es un dataloader que devuelve el eeg y el label continuo suavizado, es decir con el smoothing_label
+    for batch_idx, _data in enumerate(train_loader):
+
+        cont+=1
+        eeg, labels = _data 
+        eeg, labels = eeg.to(device), labels.to(device)
+
+        # Zero the gradients
+        optimizer1.zero_grad(set_to_none=True)
+        optimizer2.zero_grad(set_to_none=True)
+
+        # Perform forward pass to DSF
+        outputs1 = model1(eeg)  # (batch, n_class)
+        outputs1 = outputs1.squeeze(1)
         outputs1 = (outputs1 - outputs1.mean()) / outputs1.std() # normalizacion global
         outputs1 = outputs1.to('cpu')
 
