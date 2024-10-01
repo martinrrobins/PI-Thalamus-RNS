@@ -2,7 +2,7 @@ import pandas as pd
 import sys
 import os
 
-sys.path.insert(1, '/home/martin/Documentos/env_thalamus/01 Thalamus-PI/iESPnet_SRC_main/utilities')
+sys.path.insert(1, '/home/martin/Documentos/PI-Thalamus/01 Thalamus-PI/iESPnet_SRC_main/utilities')
 import IO # customized functions for navigating throught the folders and files
 import Epochs
 from Generator import smoothing_label
@@ -19,7 +19,7 @@ import matplotlib.font_manager as fm
 
 from scipy import fft as sp_fft
 from itertools import permutations
-from utilit import get_data_files, get_annot_files, get_epochs_zeropad_all, get_events, get_patient_PE, get_spectrogram
+from utilit_espectrograms import get_data_files, get_annot_files, get_epochs_zeropad_all, get_events, get_patient_PE, get_spectrogram_1
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Definición de variables para crear el espectrograma 
@@ -31,12 +31,18 @@ SPEC_WIN_LEN     = int(ECOG_SAMPLE_RATE * TT / 1000 ) # win size
 overlap          = 500 
 SPEC_HOP_LEN     = int(ECOG_SAMPLE_RATE * (TT - overlap) / 1000) # Length of hop between windows.
 SPEC_NFFT        = 500  # to see changes in 0.5 reso
-top_db           = 40.0
+top_db           = 60.0
 
 DATA_DIR = "/media/martin/Disco2/Rns_Data/RNS_ESPM_datatransfer/Data"
-RNSIDS   = IO.get_subfolders(DATA_DIR)
+RNSIDS   = [
+            #'PIT-RNS0427',
+            'PIT-RNS1713',  
+            'PIT-RNS3016',
+            #'PIT-RNS7168',
+            #'PIT-RNS8326'
+           ]
 
-out_address = '/media/martin/Disco2/Rns_Data/RNS_ESPM_datatransfer/Representaciónes_PDF/'
+out_address = '/media/martin/Disco2/Rns_Data/Representaciónes_PDF/'
 
 if not os.path.exists(out_address):
     os.makedirs(out_address)
@@ -73,7 +79,7 @@ for s in range(len(RNSIDS)):
 
             signal = torch.from_numpy(epoch)
             signal = (signal - signal.mean()) / signal.std()
-            spec, t, f = get_spectrogram(signal, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN)
+            spec, t, f = get_spectrogram_1(signal, ECOG_SAMPLE_RATE, SPEC_NFFT, SPEC_WIN_LEN, SPEC_HOP_LEN)
 
             spec = librosa.power_to_db(spec, top_db=top_db)
             idx_60 = np.where(f<= 60)[0][-1]
@@ -97,7 +103,7 @@ for s in range(len(RNSIDS)):
             tiempo           = t_1 * intervalo_tiempo
             ticks_x          = np.arange(0, tiempo.max()+1, 10)
 
-            font_path= 'Montserrat-Regular.ttf'
+            font_path= '../03-Letra-plot/Montserrat-Regular.ttf'
             montserrat = fm.FontProperties(fname=font_path)
 
             fig, axs = plt.subplots(3, 1, figsize=(6, 6), facecolor='#F2F2F2')
