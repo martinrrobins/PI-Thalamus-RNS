@@ -33,9 +33,9 @@ df_meta        = pd.read_csv(meta_data_file)
 FREQ_MASK_PARAM       = 10
 TIME_MASK_PARAN       = 20
 N_CLASSES             = 1
-learning_rate_iespnet = 1e-3
+learning_rate_iespnet = 7e-4
 batch_size            = 64    #128
-epochs                = 12
+epochs                = 20
 num_workers           = 4
 
 # Variables DSF
@@ -48,7 +48,7 @@ dsf_n_out_channels    = None
 n_channels            = 4
 learning_rate_dsf     = 1e-3  
 
-save_path             = 'dsf_iespnet_lopo/'
+save_path             = 'dsf_iespnet_lopo_lr7/'
 patients              = df_meta['rns_id'].unique().tolist()
 
 # hiperparametros iESPnet y DSF
