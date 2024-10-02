@@ -10,10 +10,12 @@ import pandas                   as pd
 import numpy                    as np
 
 from torchvision       import transforms
+
+sys.path.append(os.path.abspath(os.path.join('..')))
 from utilit_train_test import make_weights_for_balanced_classes
 
-sys.path.append(os.path.abspath(os.path.join('..','..','iESPnet_SRC_main','utilities')))
-from Generator         import SeizureDatasetLabelTimev2, permute_spec, smoothing_label
+sys.path.append(os.path.abspath(os.path.join('..','..','..','iESPnet_SRC_main','utilities')))
+from Generator         import SeizureDatasetLabelTime, permute_spec, smoothing_label
 from Model             import iESPnet
 from TrainEval         import train_model_iespnet_lopo, test_model_iespnet, get_performance_indices
 
@@ -95,20 +97,20 @@ def main():
         test_df.reset_index(drop = True, inplace=True)
 
         # Dataloaders creados
-        train_data = SeizureDatasetLabelTimev2(
-                                               file             = train_df,
-                                               root_dir         = SPE_DIR,
-                                               transform        = None, 
-                                               target_transform = smoothing_label(),
-                                              )
+        train_data_orig = SeizureDatasetLabelTime(
+                                                  file             = train_df,
+                                                  root_dir         = SPE_DIR,
+                                                  transform        = None, 
+                                                  target_transform = smoothing_label(),
+                                                 )
         
         # testing data should be balanced, just be "as it is"
-        test_data  = SeizureDatasetLabelTimev2(
-                                               file             = test_df,
-                                               root_dir         = SPE_DIR,
-                                               transform        = None,
-                                               target_transform = smoothing_label()  
-                                              )
+        test_data  = SeizureDatasetLabelTime(
+                                             file             = test_df,
+                                             root_dir         = SPE_DIR,
+                                             transform        = None,
+                                             target_transform = smoothing_label()  
+                                            )
         
         # data augmentation 
         transform_train = transforms.Compose([
@@ -116,9 +118,19 @@ def main():
                                               T.TimeMasking(TIME_MASK_PARAN), 
                                               permute_spec()                                                                     
                                             ])
+        
+        # data augmentation only in train data
+        train_data_tran = SeizureDatasetLabelTime(
+                                                  file             = train_df,
+                                                  root_dir         = SPE_DIR,
+                                                  transform        = transform_train, 
+                                                  target_transform = smoothing_label() 
+                                                 )
+        
+        train_data = torch.utils.data.ConcatDataset([train_data_orig, train_data_tran])
 
         # se debe balancear train_df
-        weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=1)
+        weights = make_weights_for_balanced_classes(train_df, [0,1], n_concat=2)
         sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
 
         outputfile = save_models + 'model'
@@ -127,8 +139,7 @@ def main():
                                                                 model,                                                                                     
                                                                 hparams, 
                                                                 epochs, 
-                                                                train_data,                                                                                          
-                                                                transform_train, 
+                                                                train_data, 
                                                                 sampler, 
                                                                 outputfile                                                                                         
                                                                )
