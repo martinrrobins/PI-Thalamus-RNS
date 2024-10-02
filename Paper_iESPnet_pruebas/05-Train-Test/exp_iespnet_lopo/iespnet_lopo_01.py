@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join('..')))
 from utilit_train_test import make_weights_for_balanced_classes
 
 sys.path.append(os.path.abspath(os.path.join('..','..','..','iESPnet_SRC_main','utilities')))
-from Generator         import SeizureDatasetLabelTime, permute_spec, smoothing_label
+from Generator         import SeizureDatasetLabelTime, permute_spec_iespnet, smoothing_label
 from Model             import iESPnet
 from TrainEval         import train_model_iespnet_lopo, test_model_iespnet, get_performance_indices
 
@@ -116,7 +116,7 @@ def main():
         transform_train = transforms.Compose([
                                               T.FrequencyMasking(FREQ_MASK_PARAM),
                                               T.TimeMasking(TIME_MASK_PARAN), 
-                                              permute_spec()                                                                     
+                                              permute_spec_iespnet()                                                                     
                                             ])
         
         # data augmentation only in train data

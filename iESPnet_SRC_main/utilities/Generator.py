@@ -290,6 +290,19 @@ class permute_spec(object):
         data = data[:, idx, :, :] # data [idx]   
         return data
 
+class permute_spec_iespnet(object):
+    def __call__(self, data):
+        """"apply random channel permute different from 1234."""
+        import random
+        S = [i for i in range(0,4)]
+        out = True
+        while out:
+            idx = random.sample(S,4)
+            if idx != [0, 1, 2, 3]:
+                out=False    
+        data = data [idx]   
+        return data
+
 class smoothing_label(object):
     def __call__(self, label, n=5, std=2.5):
         """"apply label smoothing."""
