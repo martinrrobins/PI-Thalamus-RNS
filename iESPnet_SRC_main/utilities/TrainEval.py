@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join('..', 'utilities')))
 import torch.optim as optim
 from torch import nn
 # for training the model with early stopping
-from pytorchtools import EarlyStopping
+from pytorchtools import EarlyStopping, EarlyStopping_iespnet
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from IO import get_spectrogram_2
@@ -528,7 +528,7 @@ def train_model_dsf_iespnet_abl_early(model1, model2, hparams, epochs, train_dat
     valid_accs       = []
 
     # initialize the early_stopping object
-    early_stopping = EarlyStopping(patience = patience, verbose = True, delta=0, path = save_path)
+    early_stopping = EarlyStopping(patience = patience, min_epochs=15, verbose = True, delta=0, path = save_path)
   
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -694,6 +694,85 @@ def train_model_iespnet(model, hparams, epochs, train_data, vali_data, sampler, 
     del optimizer, scheduler
     torch.cuda.empty_cache()
     
+    return avg_train_losses, train_accs, avg_valid_losses, valid_accs
+
+def train_model_iespnet_abl_early(model, hparams, epochs, train_data, vali_data, sampler, save_path, patience):
+    # train model until the indicated number of epochs -- iespnet
+    # to track the average training loss per epoch as the model trains
+    avg_train_losses = []
+    train_accs       = []
+
+    # to track the average validation loss per epoch as the model trains
+    avg_valid_losses = [] 
+    valid_accs       = []
+
+    # initialize the early_stopping object
+    early_stopping = EarlyStopping_iespnet(patience = patience, min_epochs=15, verbose = True, delta = 0, path = save_path)
+      
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print('Using {} device'.format(device))
+
+    # following pytorch suggestion to speed up training
+    torch.backends.cudnn.benchmark     = False # reproducibilidad
+    torch.backends.cudnn.deterministic = True
+
+    kwargs = {'num_workers': hparams["num_workers"], 'pin_memory': True} if use_cuda else {}
+    train_loader = DataLoader(train_data, batch_size = hparams["batch_size"], sampler = sampler, **kwargs)
+    valid_loader = DataLoader(vali_data, batch_size = hparams["batch_size"], shuffle = False, **kwargs)
+    
+    #move model to device
+    model.to(device)
+
+    print('Num Model Parameters', sum([param.nelement() for param in model.parameters()]))
+
+    optimizer = optim.AdamW(model.parameters(), hparams['learning_rate'], weight_decay=1e-4)
+
+    scheduler = optim.lr_scheduler.OneCycleLR(
+                                              optimizer, 
+                                              max_lr          = hparams['learning_rate'], 
+                                              steps_per_epoch = int(len(train_loader)),
+                                              epochs          = hparams['epochs'],
+                                              anneal_strategy = 'linear'
+                                             )
+          
+    criterion = nn.BCEWithLogitsLoss().to(device)
+ 
+    for epoch in range(1, epochs + 1):
+        train_losses, train_aucpr = training_iespnet(
+                                                     model,                                                          
+                                                     device, 
+                                                     train_loader,                                                      
+                                                     criterion, 
+                                                     optimizer,  
+                                                     scheduler, 
+                                                     epoch                                                     
+                                                    )
+        
+        valid_losses, valid_aucpr = validate_iespnet(
+                                                     model,                                                
+                                                     device, 
+                                                     valid_loader, 
+                                                     criterion, 
+                                                     epoch                                                                                                   
+                                                    )
+        
+        train_loss = np.average(train_losses)
+        valid_loss = np.average(valid_losses)
+
+        avg_train_losses.append(train_loss)
+        avg_valid_losses.append(valid_loss)
+        
+        train_accs.append(train_aucpr)
+        valid_accs.append(valid_aucpr)
+
+        # early_stopping needs the validation loss to check if it has decresed, and if it has, it will make a checkpoint of the current model
+        early_stopping(epoch, valid_loss, model, optimizer)
+
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break   
+
     return avg_train_losses, train_accs, avg_valid_losses, valid_accs
 
 def train_model_iespnet_lopo(model, hparams, epochs, train_data, sampler, save_path):
