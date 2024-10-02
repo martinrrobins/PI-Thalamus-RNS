@@ -30,6 +30,6 @@ source ${HOME}/.bashrc
 cd ${HOME}/
 micromamba activate env_thalamus
 
-cd ${HOME}/PI-Thalamus/01\ Thalamus-PI/Paper_iESPnet_pruebas/05-Train-Test/exp_iespnet/
+cd ${HOME}/PI-Thalamus/01\ Thalamus-PI/Paper_iESPnet_pruebas/05-Train-Test/exp_iespnet_lopo/
 
 srun python3 iespnet_lopo_04.py
