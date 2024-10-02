@@ -701,11 +701,6 @@ def train_model_iespnet_lopo(model, hparams, epochs, train_data, sampler, save_p
     # to track the average training loss per epoch as the model trains
     avg_train_losses = []
     train_accs       = []
-
-    # to track the average validation loss per epoch as the model trains
-    avg_valid_losses = [] 
-    valid_accs       = []
-  
     
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
