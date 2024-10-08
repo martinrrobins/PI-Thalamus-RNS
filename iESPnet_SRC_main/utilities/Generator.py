@@ -147,7 +147,7 @@ class SeizureDatasetLabelTimev2(Dataset):
         dic = np.load(file_name, allow_pickle=True)
         data  = dic.item().get('iEEG')
         label = dic.item().get('label_time')
-
+        
         time       = np.linspace(0, 90, 181)
         label_time = np.zeros(181)
 

@@ -387,3 +387,48 @@ def get_spectrogram_2(signal, fs, n_fft = 256, win_len = None, hop_len = None, p
     spec   = spec[:, :idx_60,:]
 
     return spec, time, freqs
+
+def get_bool_mask_stim_artifact(
+                                 ts                           : np.array, # type: ignore
+                                 time                         : np.array, # type: ignore
+                                 samples_consecutive_artifact : int = 12,
+                                 samples_skip_rebound         : int = 500
+                                ):
+    """
+    The Stimulation induces a flat line artifact in the time series.
+    Minimum of non changing data for 'samples_consecutive_artifact' is here masked.
+    'Samples_skip_rebound' add's samples to be exluded after the flat line artifact due to 
+    high amplitude rebound effect. 
+    
+    author: Timon Merk
+    """
+    stim_segments = []
+    stim_seg      = []
+
+    for idx, val in enumerate(np.diff(ts)):
+        if val == 0:
+            stim_seg.append(time[idx])
+            if (idx + samples_skip_rebound) < time.shape[0]: 
+                stim_seg.append(time[idx+samples_skip_rebound])
+        if val != 0 and len(stim_seg) > samples_consecutive_artifact:
+            if len(stim_segments) == 0:
+                stim_segments.append(stim_seg)
+            else:
+                diff_to_last_stim = stim_seg[0] - stim_segments[-1][-1]
+                if diff_to_last_stim < 0.1:
+                    stim_segments[-1].append(stim_seg[-1])  # append to last previous stim segment
+                else:
+                    stim_segments.append(stim_seg)
+                    
+        if val != 0:
+            stim_seg = []
+
+    bool_mask_skip = np.ones(time.shape[0])
+    for seg in stim_segments:
+        bool_mask_skip[np.where((time>seg[0]) & (time<seg[-1]))[0]] = 0
+    bool_mask_skip = bool_mask_skip.astype(bool, copy=False)
+
+    # Contar el número de segmentos de estimulación
+    num_stim_segments = len(stim_segments)
+
+    return bool_mask_skip, num_stim_segments
