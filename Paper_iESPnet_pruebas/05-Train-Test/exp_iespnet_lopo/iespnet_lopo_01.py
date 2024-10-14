@@ -171,7 +171,7 @@ def main():
         
         np.save(save_predictions + 'results.npy', predict_)
                 
-        del train_data, test_data, vali_data, model
+        del train_data, test_data, model
         torch.cuda.empty_cache()
 
 if __name__=='__main__':
