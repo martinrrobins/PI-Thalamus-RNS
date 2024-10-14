@@ -10,6 +10,52 @@ import torch
 import torchaudio.transforms as T
 import librosa
 
+def get_bool_mask_stim_artifact(
+                                 ts                           : np.array, # type: ignore
+                                 time                         : np.array, # type: ignore
+                                 samples_consecutive_artifact : int = 12,
+                                 samples_skip_rebound         : int = 500
+                                ):
+    """
+    The Stimulation induces a flat line artifact in the time series.
+    Minimum of non changing data for 'samples_consecutive_artifact' is here masked.
+    'Samples_skip_rebound' add's samples to be exluded after the flat line artifact due to 
+    high amplitude rebound effect. 
+    
+    author: Timon Merk
+    """
+    stim_segments = []
+    stim_seg      = []
+
+    for idx, val in enumerate(np.diff(ts)):
+        if val == 0:
+            stim_seg.append(time[idx])
+            if (idx + samples_skip_rebound) < time.shape[0]: 
+                stim_seg.append(time[idx+samples_skip_rebound])
+        if val != 0 and len(stim_seg) > samples_consecutive_artifact:
+            if len(stim_segments) == 0:
+                stim_segments.append(stim_seg)
+            else:
+                diff_to_last_stim = stim_seg[0] - stim_segments[-1][-1]
+                if diff_to_last_stim < 0.1:
+                    stim_segments[-1].append(stim_seg[-1])  # append to last previous stim segment
+                else:
+                    stim_segments.append(stim_seg)
+                    
+        if val != 0:
+            stim_seg = []
+
+    bool_mask_skip = np.ones(time.shape[0])
+    for seg in stim_segments:
+        bool_mask_skip[np.where((time>seg[0]) & (time<seg[-1]))[0]] = 0
+    bool_mask_skip = bool_mask_skip.astype(bool, copy=False)
+
+    # Contar el número de segmentos de estimulación
+    num_stim_segments = len(stim_segments)
+
+    return bool_mask_skip, num_stim_segments
+
+
 def get_subfolders(subject_path, Verbose=False):
     """
     Get subfolder from a given path. Useful for getting all patients list.
@@ -262,6 +308,161 @@ def get_epochs_zeropad_all(data_file, events, twindow=90.0):
                     raise ValueError('Time cannot be negative')
                 Z[i] = time
     return X, Y, Z
+
+def get_padded_and_estim_time(data_file, events, twindow=90.0, excluir_label=2):
+    """
+    Extract epochs from file at a given twindow length.
+
+    This function segments data in fixed epochs. If a file is shorter than 
+    90 s, then zeropadding. If it is longer, then non-overlapping 90 s segments
+    are extracted. 
+    
+    Useful for creating spectrogram of edf files with annotations (aka PITT)
+
+
+    Parameters
+    ----------
+    data : array, shape(n_channels, n_samples)
+        either cortex of subcortex data to be epoched.
+    events : array, shape(n_events,2)
+        All events that were found by the function
+        'get_events'.
+        The first column contains the event time seconds and the second column
+        contains the event id.
+    twindow : float
+        length of the epoch.
+
+    Returns
+    -------
+    X : array, shape(n_events, n_channels, n_samples)
+        epoched data
+    Y : array, shape(n_events, n_samples)
+        label information, no_sz=0, sz_on=1, sz=2.
+        See 'get_events' for more information regarding labels names.
+    Z : array, shape(n_events, n_samples)
+        time of the sz_on.
+    """
+    raw = mne.io.read_raw_edf(data_file)
+    sf = raw.info['sfreq']
+    data = raw.get_data()
+    n_channels, time_rec = np.shape(data)
+
+
+    # Excluir eventos con la etiqueta especificada
+    idx_valid_events = np.where(events[:, 1] != excluir_label)[0]
+    events = events[idx_valid_events, :]
+
+    # labels
+    idx_eof = np.where(events[:, 1] == 0)[0]
+    eof_event_time = events[idx_eof, 0]  # in seconds
+    # add zero for first eof
+    eof_event_time = np.hstack((0.0, eof_event_time))
+    # # check recording lenght is at least 90s
+    rec_len = [t - s for s, t in zip(eof_event_time, eof_event_time[1:])]
+    # files shorter than 60 are discarded.
+    idx_shorttrials = np.where(np.asarray(rec_len) < 60)[0]
+
+    # delete short trials:
+    idx_eof_new = np.delete(idx_eof, idx_shorttrials)
+    eof_event_time_new = events[idx_eof_new, 0]
+    rec_len_new = np.delete(rec_len, idx_shorttrials)
+
+    # check if annot time is not longer than file time
+    idx_stop = np.where(np.dot(eof_event_time_new, sf) > time_rec)
+
+    # avoid trying to read those trials
+    idx_eof_ = np.delete(idx_eof_new, idx_stop)
+    nTrials = len(idx_eof_)
+
+    Y = np.zeros((nTrials,)).astype(int)  # labels
+    Z = np.zeros((nTrials,))  # time
+    n_samples = int(round((twindow)*sf))
+    X = np.zeros((nTrials, n_channels, n_samples))
+    
+    # extract epochs starts
+    short_file = 0
+    num_stim_samples = []
+    n_stim= []
+    time2pad = []
+    for i in range(nTrials):
+        len_archive = rec_len_new[i]
+        time_sof = eof_event_time_new[i] - len_archive
+        start_epoch = int(round(time_sof * sf))
+        if len_archive >= twindow:
+            stop_epoch = int(round((time_sof + twindow) * sf))
+            final_epoch = stop_epoch
+            epoch = data[:, start_epoch:stop_epoch]
+        else:
+            stop_epoch = int(round((time_sof + len_archive) * sf))
+            final_epoch = int(round((time_sof + twindow) * sf))
+            epoch = data[:, start_epoch:stop_epoch]
+            # pad the time that is not part of the shortened epoch to reach twindow
+            time_to_pad = final_epoch - stop_epoch # in samples
+            time2pad.append(time_to_pad*(1/sf))
+
+
+
+        
+            
+            if time_to_pad > 0:
+                short_file+=1
+                     
+
+        if idx_eof_[i] != len(events)-1:
+            if events[idx_eof_[i] - 1, 1] != 0 and (idx_eof_[i] - 1) != -1:  # then is sz_on
+                # label
+                Y[i] = events[idx_eof_[i] - 1, 1]
+                # time
+                time_sz = events[idx_eof_[i] - 1, 0]
+                time = time_sz - time_sof
+                time_eof = events[idx_eof_[i], 0]
+                if len_archive > twindow:  # large archive
+                    if time > twindow:  # sz happens and epoch didn't capture it
+                        n_90 = int(len_archive / twindow)  # n of 90 s in axive
+                        t_90 = time / twindow  # in which n time happens
+                        if n_90 < t_90:  # sz is happening closer the end
+                            # redefine epoch from eof to - 90
+                            start_epoch = int(round((time_eof - twindow) * sf))
+                            stop_epoch = int(round(time_eof * sf))
+                            epoch = data[:, start_epoch:stop_epoch]
+
+                            # time
+                            time = twindow - (time_eof - time_sz)
+                        else:
+                            # make sure we pick up the correct 90 s
+                            start_epoch = int(round((time_sof + int(t_90)*twindow) * sf))
+                            stop_epoch = int(round((time_sof + int(t_90)*twindow + twindow) * sf))
+                            epoch = data[:, start_epoch:stop_epoch]
+
+                            # time
+                            time = time_sz - time_sof - int(t_90)*twindow 
+        time_data = np.linspace(0,epoch.shape[1]*(1/sf),epoch.shape[1])
+        ch = epoch.shape[0]
+        num_stim_samples_ch = 0
+        n_stim_ch = 0
+        for j in range (ch):
+            stim_mask, num_stim_segments= get_bool_mask_stim_artifact(
+                                                                        ts                           = epoch[j,:], 
+                                                                        time                         = time_data, 
+                                                                        samples_consecutive_artifact = 12, 
+                                                                        samples_skip_rebound         = 500
+                                                                        )
+
+            num_stim_samples_ch += np.sum(~stim_mask)
+            n_stim_ch           += num_stim_segments
+        num_stim_samples_ = num_stim_samples_ch / ch
+        n_stim = n_stim_ch/ch
+        if n_stim >0:
+            stim_time =  (num_stim_samples_/sf)/n_stim
+        else:
+            stim_time = 0
+        num_stim_samples.append(float(stim_time))
+        idx_ = np.where(np.asarray(num_stim_samples))[0]
+        
+        num_stim_samples_ = np.asarray(num_stim_samples)[idx_]
+
+              
+    return short_file, time2pad, np.mean(num_stim_samples_)
 
 def get_events(annot_file, Verbose=False):
     """

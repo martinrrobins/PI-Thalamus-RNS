@@ -128,13 +128,13 @@ for s in range (len(patients_dsf_iespnet)):
         outputs_test  = test_model_dsf_iespnet(model1, model2, hparams, best_path, test_data_pe)
         prediction_te = get_performance_indices(outputs_test['y_true'], outputs_test['y_prob'], best_thr)
 
-        total_stim_time = 0
-        total_num_stim  = 0
+        total_stim_per_epoch   = 0
+        total_n_stim_per_epoch = 0
         
         for i in range (len(test_data_pe)):
             ieeg, label         = test_data_pe[i]
             num_stim_samples_ch = 0
-            num_stim            = 0
+            n_stim              = 0
             for j in range (4):
                 stim_mask, num_stim_segments= get_bool_mask_stim_artifact(
                                                                           ts                           = ieeg[j,:], 
@@ -144,18 +144,18 @@ for s in range (len(patients_dsf_iespnet)):
                                                                          )
     
                 num_stim_samples_ch += np.sum(~stim_mask)
-                num_stim += num_stim_segments
+                n_stim              += num_stim_segments
 
-            total_stim_time_ch = num_stim_samples_ch * time_per_sample
-            tiempo_prom_ch     = total_stim_time_ch / ieeg.shape[0]
-            num_stim_prom_ch   = num_stim / ieeg.shape[0]
+            time_stim           = num_stim_samples_ch * time_per_sample
+            
+            tiempo_per_registro = time_stim / ieeg.shape[0]
+            n_stim_per_registro = n_stim / ieeg.shape[0]
 
-            total_stim_time += tiempo_prom_ch
-            total_num_stim  += num_stim_prom_ch
-        prom_stim_time = (total_stim_time / len(test_df_pe))
-        stim_time      = (total_stim_time / total_num_stim)
+            total_stim_per_epoch   += tiempo_per_registro
+            total_n_stim_per_epoch += n_stim_per_registro
 
-
+        prom_stim_time = (total_stim_per_epoch / len(test_df_pe))
+        stim_time      = (total_stim_per_epoch / total_n_stim_per_epoch)
         
         predict_ = { 
                     "prediction_te"   : prediction_te,
