@@ -39,10 +39,10 @@ epochs                = 20
 num_workers           = 4
 
 # Variables DSF
-denoising             = 'autoreject'   # 'autoreject' 'data_augm' 
+denoising             = 'autoreject'   # 'autoreject' 'data_augm' 'no_denoising'
 model                 = 'stager_net'
-dsf_type              = 'dsfd'         # 'dsfd' 'dsfm_st'
-mlp_input             = 'log_diag_cov'
+dsf_type              = 'dsfd'         # 'dsfd'       'dsfm_st'
+mlp_input             = 'log_diag_cov' #              'logm_cov_eig'
 dsf_soft_thresh       = True
 dsf_n_out_channels    = None
 n_channels            = 4
