@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name = augm # short name for your job
+#SBATCH --job-name=augm # short name for your job
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=martin.robins@mi.unc.edu.ar
 #SBATCH --output=slurm-%x.%j.out # %j job id, ½x job name
