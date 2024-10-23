@@ -353,8 +353,8 @@ def train_model_dsf_iespnet_abl(model1, model2, hparams, epochs, train_data, val
     # para dsf: weight_decay       = 0.001
     # para dsf: lr                 = 0.0004
 
-    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate_dsf'], weight_decay = hparams['weight_decay_dsf'])
-    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate_iespnet'], weight_decay = hparams['weight_decay_iespnet'])
+    optimizer1 = optim.AdamW(model1.parameters(), hparams['learning_rate_dsf'], weight_decay = 1e-4)
+    optimizer2 = optim.AdamW(model2.parameters(), hparams['learning_rate_iespnet'], weight_decay = 1e-4)
 
     scheduler1 = optim.lr_scheduler.OneCycleLR(
                                                optimizer1, 
