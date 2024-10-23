@@ -46,7 +46,7 @@ patients              = df_meta['rns_id'].unique().tolist()
 denoising             = 'data_augm'     # 'autoreject'    'data_augm' 'no_denoising' 
 # dsf_type            = 'dsfm_st'       # 'dsfd' --> 'log_diag_cov'    'dsfm_st' --> 'logm_cov_eig'
 mlp_input             = 'logm_cov_eig'  #   
-dsf_soft_thresh       = False
+dsf_soft_thresh       = True
 dsf_n_out_channels    = None
 n_channels            = 4
 learning_rate_dsf     = 1e-3  
@@ -87,7 +87,7 @@ for s in range(len(vali_id)):
     train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
 
 # experimentos que se van a realizar
-experiment = 'data_augm_dsfm_st'
+experiment = 'data_augm_dsfm_st_thresh'
 
 def main():
     # set the seed for reproducibility
