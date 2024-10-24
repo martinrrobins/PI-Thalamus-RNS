@@ -87,7 +87,7 @@ for s in range(len(vali_id)):
     train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
 
 # experimentos que se van a realizar
-experiment = 'data_augm_dsfm_st_thresh'
+experiment = 'data_augm_dsfm_st_thresh_concat_'
 
 def main():
     # set the seed for reproducibility
@@ -139,12 +139,21 @@ def main():
 
     
     # Dataloaders creados
-    train_data = SeizureDatasetLabelTimev2(
-                                           file             = train_df,
-                                           root_dir         = SPE_DIR,
-                                           transform        = transform_ieeg, 
-                                           target_transform = smoothing_label(),
-                                          )
+    train_data_ = SeizureDatasetLabelTimev2(
+                                            file             = train_df,
+                                            root_dir         = SPE_DIR,
+                                            transform        = None, 
+                                            target_transform = smoothing_label(),
+                                           )
+
+    train_data__ = SeizureDatasetLabelTimev2(
+                                             file             = train_df,
+                                             root_dir         = SPE_DIR,
+                                             transform        = transform_ieeg, 
+                                             target_transform = smoothing_label(),
+                                            )
+    
+    train_data = torch.utils.data.ConcatDataset([train_data_, train_data__])
             
     # testing data should be balanced, just be "as it is"
     test_data  = SeizureDatasetLabelTimev2(
