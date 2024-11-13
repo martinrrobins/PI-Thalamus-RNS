@@ -39,7 +39,7 @@ batch_size            = 64    #128
 epochs                = 20
 num_workers           = 4
 
-save_path             = 'dsf_iespnet_change_dsf/'
+save_path             = 'dsf_iespnet_data_augm/'
 patients              = df_meta['rns_id'].unique().tolist()
 
 # Variables DSF
@@ -87,7 +87,7 @@ for s in range(len(vali_id)):
     train_df.drop(train_df[train_df['rns_id'] == vali_id[s]].index, inplace = True)
 
 # experimentos que se van a realizar
-experiment = 'data_augm_dsfm_st_thresh_concat_'
+experiment = 'dsfm_st_thresh'
 
 def main():
     # set the seed for reproducibility
@@ -133,7 +133,7 @@ def main():
     print('Running training for: ' + experiment)
 
     if denoising == 'data_augm':
-        transform_ieeg = AdditiveWhiteNoise(p=0.5, noise_strength=(0.5, 1), noise_std=(20, 50),recording_wise=False)
+        transform_ieeg = AdditiveWhiteNoise(p=0.5, noise_strength = (0.5, 1), noise_std = (20, 50),recording_wise = False)
     else:
         transform_ieeg = None
 
@@ -153,8 +153,6 @@ def main():
                                              target_transform = smoothing_label(),
                                             )
     
-    train_data = torch.utils.data.ConcatDataset([train_data_, train_data__])
-            
     # testing data should be balanced, just be "as it is"
     test_data  = SeizureDatasetLabelTimev2(
                                            file             = test_df,
@@ -187,7 +185,7 @@ def main():
                                                                                              model2, 
                                                                                              hparams, 
                                                                                              epochs, 
-                                                                                             train_data, 
+                                                                                             train_data__, 
                                                                                              vali_data, 
                                                                                              transform_train, 
                                                                                              sampler, 
@@ -223,7 +221,7 @@ def main():
     print()
     print('in training')
     # in training
-    outputs_train = test_model_dsf_iespnet_abl(model1, model2, hparams, best_path, train_data)
+    outputs_train = test_model_dsf_iespnet_abl(model1, model2, hparams, best_path, train_data_)
     prediction_tr = get_performance_indices(outputs_train['y_true'], outputs_train['y_prob'], best_thr)
 
     print()
